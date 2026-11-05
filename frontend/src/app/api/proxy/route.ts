@@ -23,7 +23,7 @@ async function forwardRequest(req: NextRequest, method: string, access?: string)
   const headers: Record<string, string> = {};
   if (access) headers.Authorization = `Bearer ${access}`;
   const contentType = req.headers.get("content-type");
-  if (contentType && !contentType.includes("multipart")) {
+  if (contentType) {
     headers["Content-Type"] = contentType;
   }
   let body: BodyInit | undefined;

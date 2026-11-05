@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { adminFetch, adminUpload } from "@/lib/admin-api";
+import { adminFetch, adminDownload, adminUpload } from "@/lib/admin-api";
 import { formatCLP } from "@/lib/api";
 
 export default function AdminShippingPage() {
@@ -17,9 +17,13 @@ export default function AdminShippingPage() {
     <div>
       <h1 className="font-serif text-3xl">Despachos</h1>
       <div className="mt-4 flex gap-4 text-xs uppercase tracking-label">
-        <a href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/admin/shipping-rates/export/`} className="underline">
+        <button
+          type="button"
+          className="underline"
+          onClick={() => adminDownload("/api/admin/shipping-rates/export/", "despachos.csv")}
+        >
           Exportar CSV
-        </a>
+        </button>
         <label>
           Importar
           <input

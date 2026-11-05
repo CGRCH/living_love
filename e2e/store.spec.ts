@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { waitForV3Styles } from "./helpers/wait-for-styles";
 
 async function setAuthCookies(page: import("@playwright/test").Page, request: import("@playwright/test").APIRequestContext, email: string, password: string) {
   const tokenRes = await request.post("http://localhost:8000/api/auth/token/", {
@@ -14,6 +15,7 @@ async function setAuthCookies(page: import("@playwright/test").Page, request: im
 test.describe("Living Love tienda", () => {
   test("home carga titular editorial", async ({ page }) => {
     await page.goto("/");
+    await waitForV3Styles(page);
     await expect(page.getByRole("heading", { name: /living que/i })).toBeVisible();
     await expect(page.getByText("Compra por categoría")).toBeVisible();
     await page.screenshot({ path: "test-results/artifact-home.png", fullPage: true });
@@ -65,6 +67,8 @@ test.describe("Living Love tienda", () => {
     expect(dash.ok()).toBeTruthy();
     await setAuthCookies(page, request, "admin@livinglove.cl", "admin12345");
     await page.goto("/admin");
+    await expect(page.locator('[data-admin-shell="ready"]')).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId("admin-dashboard-ready")).toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: "test-results/artifact-admin.png", fullPage: true });
   });
 });

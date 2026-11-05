@@ -17,3 +17,18 @@ export function adminUpload(apiPath: string, formData: FormData) {
     credentials: "include",
   });
 }
+
+/** Descarga CSV u otro archivo vía proxy autenticado */
+export async function adminDownload(apiPath: string, filename: string) {
+  const res = await fetch(`/api/proxy?path=${encodeURIComponent(apiPath)}`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("No se pudo descargar");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from apps.billing.models import TaxDocument, TaxDocumentSettings
 from apps.cart.models import Cart, CartItem
+from apps.catalog.demo_media import DEMO_PRODUCT_IMAGES
 from apps.catalog.models import Category, Fabric, OptionGroup, OptionValue, Product, ProductImage
 from apps.catalog.pricing import calculate_unit_price
 from apps.content.models import HomeContent, Testimonial
@@ -94,6 +95,14 @@ class ProductListSerializer(serializers.ModelSerializer):
             "category_slug",
             "images",
         )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not data.get("images"):
+            url = DEMO_PRODUCT_IMAGES.get(instance.slug)
+            if url:
+                data["images"] = [{"id": 0, "image": url, "alt": instance.name, "order": 0}]
+        return data
 
 
 class ProductDetailSerializer(ProductListSerializer):

@@ -120,6 +120,8 @@ Webhooks: `POST /api/payments/{provider}/webhook/`
 ```bash
 cd backend && pytest
 cd frontend && npm run lint && npx tsc --noEmit && npm run build
+cd frontend && npm run start   # reiniciar siempre después de build (HTML/CSS deben coincidir)
+./scripts/verify-next-css.sh    # falla si Tailwind no carga (evita screenshots sin estilos)
 npx playwright test
 ```
 

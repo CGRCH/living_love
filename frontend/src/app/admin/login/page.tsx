@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { getSession, login } from "@/lib/auth-client";
+import { login } from "@/lib/auth-client";
 import { Button } from "@/components/ui/Button";
 
 export default function AdminLoginPage() {

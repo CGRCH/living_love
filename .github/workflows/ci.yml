@@ -69,6 +69,9 @@ jobs:
           npm run start &
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
+      - run: chmod +x scripts/verify-next-css.sh && ./scripts/verify-next-css.sh
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
       - run: npm ci
         working-directory: frontend
       - run: npx playwright install chromium

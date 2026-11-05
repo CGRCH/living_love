@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { adminFetch, adminUpload } from "@/lib/admin-api";
+import { adminFetch, adminDownload, adminUpload } from "@/lib/admin-api";
 import { Button } from "@/components/ui/Button";
 import { formatCLP } from "@/lib/api";
 
@@ -53,9 +53,13 @@ export default function AdminProductsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="font-serif text-3xl">Productos</h1>
         <div className="flex gap-2">
-          <a href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/admin/products/export_csv/`} className="text-xs uppercase tracking-label underline">
+          <button
+            type="button"
+            className="text-xs uppercase tracking-label underline"
+            onClick={() => adminDownload("/api/admin/products/export_csv/", "productos.csv")}
+          >
             Exportar CSV
-          </a>
+          </button>
         </div>
       </div>
       <form onSubmit={create} className="mt-8 grid gap-3 border border-arena/40 bg-blanco p-4 md:grid-cols-3">

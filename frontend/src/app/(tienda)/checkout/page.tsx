@@ -82,11 +82,36 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
-      <div className="mb-8 flex items-center justify-center gap-8 text-[10px] uppercase tracking-label">
-        <span>1 Carro</span>
-        <span className="border-b-2 border-onix pb-1 font-semibold">2 Despacho y pago</span>
-        <span>3 Confirmación</span>
-      </div>
+      <nav
+        aria-label="Pasos de compra"
+        className="mb-10 flex flex-wrap items-center justify-center gap-2 md:gap-0"
+      >
+        {[
+          { n: 1, label: "Carro", active: false },
+          { n: 2, label: "Despacho y pago", active: true },
+          { n: 3, label: "Confirmación", active: false },
+        ].map((step, i) => (
+          <div key={step.n} className="flex items-center">
+            <div
+              className={`flex items-center gap-2 px-2 md:px-4 ${step.active ? "text-onix" : "text-taupe"}`}
+            >
+              <span
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                  step.active ? "bg-onix text-blanco" : "border border-arena bg-blanco"
+                }`}
+              >
+                {step.n}
+              </span>
+              <span
+                className={`text-[10px] uppercase tracking-label ${step.active ? "border-b-2 border-onix pb-1 font-semibold" : ""}`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {i < 2 ? <span className="mx-2 hidden h-px w-10 bg-arena md:mx-4 md:block md:w-16" /> : null}
+          </div>
+        ))}
+      </nav>
       <h1 className="font-serif text-4xl">Finalizar compra</h1>
       <div className="mt-10 grid gap-12 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-10">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchHome } from "@/lib/api";
+import { DEFAULT_CATEGORY_IMAGE, DEMO_CATEGORY_IMAGES } from "@/lib/demo-images";
 import { Button } from "@/components/ui/Button";
 import { ProductCard } from "@/components/catalog/ProductCard";
 
@@ -55,7 +56,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
-            {home.categories?.map((cat: { slug: string; name: string }, i: number) => (
+            {home.categories?.map((cat: { slug: string; name: string }) => (
               <Link
                 key={cat.slug}
                 href={`/categoria/${cat.slug}`}
@@ -64,7 +65,7 @@ export default async function HomePage() {
                 <div
                   className="absolute inset-0 bg-cover bg-center transition group-hover:scale-105"
                   style={{
-                    backgroundImage: `url('https://images.unsplash.com/photo-${1616486338812 + i}-3dadae4b4ace?w=600&q=70')`,
+                    backgroundImage: `url('${DEMO_CATEGORY_IMAGES[cat.slug] ?? DEFAULT_CATEGORY_IMAGE}')`,
                   }}
                 />
                 <span className="absolute bottom-6 left-3 origin-bottom-left -rotate-90 text-[10px] uppercase tracking-label">
@@ -133,15 +134,64 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="bg-onix py-20 text-blanco">
+      <section className="bg-marfil py-16">
         <div className="mx-auto max-w-7xl px-4 lg:px-8">
-          <h2 className="font-serif text-3xl">Lo que dicen nuestros clientes</h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {home.testimonials?.slice(0, 3).map(
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <h2 className="font-serif text-3xl text-onix">@livinglove.cl</h2>
+            <p className="text-[10px] uppercase tracking-label text-taupe">Síguenos en Instagram</p>
+          </div>
+          <div className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6 md:gap-3">
+            {[
+              "photo-1616486338812-3dadae4b4ace",
+              "photo-1555041469-a586c167ea46",
+              "photo-1493663284031-b7e3aefcae5e",
+              "photo-1586023492125-27b2c045efd7",
+              "photo-1567016432779-094069958ea5",
+              "photo-1631889992176-79e40c2b3160",
+            ].map((id) => (
+              <div
+                key={id}
+                className="aspect-square bg-grafito bg-cover bg-center"
+                style={{ backgroundImage: `url('https://images.unsplash.com/${id}?w=400&q=70')` }}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-onix text-blanco">
+        {home.testimonials?.[0] ? (
+          <div className="relative min-h-[520px] md:min-h-[560px]">
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage:
+                  "url('https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1600&q=80')",
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-onix via-onix/70 to-onix/30" />
+            <blockquote className="relative mx-auto flex min-h-[520px] max-w-7xl flex-col justify-end px-4 pb-16 pt-24 lg:px-8 md:min-h-[560px]">
+              <p className="max-w-3xl font-serif text-2xl leading-snug md:text-4xl">
+                “{home.testimonials[0].text}”
+              </p>
+              <footer className="mt-6 text-sm text-champ">
+                — {home.testimonials[0].name}
+                {home.testimonials[0].location ? `, ${home.testimonials[0].location}` : ""}
+              </footer>
+            </blockquote>
+          </div>
+        ) : null}
+        <div className="mx-auto max-w-7xl px-4 py-16 lg:px-8">
+          <h2 className="font-serif text-3xl">Más opiniones</h2>
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
+            {home.testimonials?.slice(1, 3).map(
               (t: { id: number; name: string; text: string; location?: string }) => (
                 <blockquote key={t.id} className="border border-grafito p-6 text-sm text-arena">
                   <p>{t.text}</p>
-                  <footer className="mt-4 font-serif text-champ">— {t.name}</footer>
+                  <footer className="mt-4 font-serif text-champ">
+                    — {t.name}
+                    {t.location ? `, ${t.location}` : ""}
+                  </footer>
                 </blockquote>
               ),
             )}

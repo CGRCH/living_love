@@ -10,6 +10,7 @@ from apps.payments.models import PaymentProviderConfig
 from apps.shipping.models import Commune, Region, ShippingRate
 from apps.store_settings.models import Coupon, StoreSettings
 from apps.billing.models import TaxDocumentSettings
+from apps.orders.models import Order, OrderEvent, OrderItem
 
 User = get_user_model()
 
@@ -192,6 +193,73 @@ class Command(BaseCommand):
                 "is_active": True,
             },
         )
+        Testimonial.objects.get_or_create(
+            name="Felipe M.",
+            defaults={
+                "location": "Providencia",
+                "text": "El proceso de cotización fue claro y el sofá llegó exactamente como lo configuramos online.",
+                "rating": 5,
+                "is_active": True,
+            },
+        )
+        Testimonial.objects.get_or_create(
+            name="Valentina S.",
+            defaults={
+                "location": "Vitacura",
+                "text": "Telas hermosas y terminaciones impecables. Recomiendo Living Love sin dudarlo.",
+                "rating": 5,
+                "is_active": True,
+            },
+        )
+
+        sofa = Product.objects.filter(slug="sofa-nube-boucle").first()
+        seccional = Product.objects.filter(slug="seccional-andes").first()
+        if sofa and not Order.objects.filter(number="LL-DEMO-0001").exists():
+            o1 = Order.objects.create(
+                number="LL-DEMO-0001",
+                email="cliente@demo.cl",
+                phone="+56912345678",
+                status=Order.Status.PAID,
+                subtotal=1290000,
+                total=1290000,
+                deposit_amount=645000,
+                balance_due=645000,
+                amount_due_now=645000,
+                shipping_cost=0,
+                shipping_address={"name": "María Demo", "street": "Av. Providencia 1234"},
+            )
+            OrderItem.objects.create(
+                order=o1,
+                product=sofa,
+                name_snapshot=sofa.name,
+                unit_price=1290000,
+                qty=1,
+                options={"Tela": "Bouclé Marfil"},
+            )
+            OrderEvent.objects.create(order=o1, status="paid", note="Pago confirmado (demo)")
+        if seccional and not Order.objects.filter(number="LL-DEMO-0002").exists():
+            o2 = Order.objects.create(
+                number="LL-DEMO-0002",
+                email="juan@demo.cl",
+                phone="+56987654321",
+                status=Order.Status.IN_WORKSHOP,
+                subtotal=1890000,
+                total=1890000,
+                deposit_amount=945000,
+                balance_due=945000,
+                amount_due_now=945000,
+                shipping_cost=0,
+                shipping_address={"name": "Juan Pérez", "street": "Los Leones 456"},
+            )
+            OrderItem.objects.create(
+                order=o2,
+                product=seccional,
+                name_snapshot=seccional.name,
+                unit_price=1890000,
+                qty=1,
+                options={},
+            )
+            OrderEvent.objects.create(order=o2, status="in_workshop", note="En fabricación")
 
         now = timezone.now()
         Coupon.objects.update_or_create(

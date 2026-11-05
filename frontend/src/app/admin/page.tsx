@@ -24,7 +24,7 @@ export default function AdminDashboardPage() {
   if (!data) return <p>Cargando panel…</p>;
 
   return (
-    <div>
+    <div data-testid="admin-dashboard-ready">
       <p className="text-[10px] uppercase tracking-label text-taupe">
         {new Date().toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" })}
       </p>

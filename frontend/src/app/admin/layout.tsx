@@ -21,30 +21,57 @@ const links = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const [authState, setAuthState] = useState<"loading" | "ok" | "denied">("loading");
 
   useEffect(() => {
     if (pathname.endsWith("/login")) {
-      setReady(true);
+      setAuthState("ok");
       return;
     }
-    getSession().then((s) => {
-      if (!s?.user || s.user.role !== "admin") {
-        router.replace("/admin/login");
+
+    let cancelled = false;
+    const verify = async (attempt = 0) => {
+      const session = await getSession();
+      if (cancelled) return;
+      if (session?.user?.role === "admin") {
+        setAuthState("ok");
         return;
       }
-      setReady(true);
-    });
+      if (attempt < 3) {
+        setTimeout(() => verify(attempt + 1), 400);
+        return;
+      }
+      setAuthState("denied");
+      router.replace("/admin/login");
+    };
+    verify();
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, router]);
-
-  if (!ready) return null;
 
   if (pathname.endsWith("/login")) {
     return <div className="min-h-screen bg-marfil">{children}</div>;
   }
 
+  if (authState === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-marfil text-sm text-taupe">
+        Cargando panel…
+      </div>
+    );
+  }
+
+  if (authState === "denied") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-marfil text-sm text-taupe">
+        Redirigiendo…
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen bg-marfil">
+    <div className="flex min-h-screen bg-marfil" data-admin-shell="ready">
       <aside className="hidden w-64 shrink-0 bg-onix p-6 text-blanco md:block">
         <p className="font-serif text-xl">LIVING LOVE</p>
         <p className="text-[10px] uppercase tracking-label text-champ">Panel administración</p>
