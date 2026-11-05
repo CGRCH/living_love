@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchProducts } from "@/lib/api";
+import { categoryImageForSlug } from "@/lib/demo-images";
 import { ProductCard } from "@/components/catalog/ProductCard";
 
 const labels: Record<string, string> = {
@@ -19,8 +20,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
       <section
         className="relative flex min-h-[220px] items-center justify-center bg-grafito text-blanco"
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)), url('https://images.unsplash.com/photo-1540574163026-d643ea997883?w=1400&q=80')",
+          backgroundImage: `linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)), url('${categoryImageForSlug(params.slug)}')`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}

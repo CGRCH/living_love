@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { fetchHome } from "@/lib/api";
-import { DEFAULT_CATEGORY_IMAGE, DEMO_CATEGORY_IMAGES } from "@/lib/demo-images";
+import { categoryImageForSlug, DEMO_HERO, DEMO_LIFESTYLE, DEMO_TESTIMONIAL, DEMO_INSTAGRAM_TILES } from "@/lib/demo-images";
 import { Button } from "@/components/ui/Button";
 import { ProductCard } from "@/components/catalog/ProductCard";
 
@@ -21,8 +21,7 @@ export default async function HomePage() {
         <div
           className="absolute inset-0 bg-cover bg-center opacity-70"
           style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=1600&q=80')",
+            backgroundImage: `url('${DEMO_HERO}')`,
           }}
         />
         <div className="relative mx-auto flex max-w-7xl flex-col justify-end px-4 pb-20 pt-32 lg:px-8">
@@ -65,7 +64,7 @@ export default async function HomePage() {
                 <div
                   className="absolute inset-0 bg-cover bg-center transition group-hover:scale-105"
                   style={{
-                    backgroundImage: `url('${DEMO_CATEGORY_IMAGES[cat.slug] ?? DEFAULT_CATEGORY_IMAGE}')`,
+                    backgroundImage: `url('${categoryImageForSlug(cat.slug)}')`,
                   }}
                 />
                 <span className="absolute bottom-6 left-3 origin-bottom-left -rotate-90 text-[10px] uppercase tracking-label">
@@ -97,8 +96,7 @@ export default async function HomePage() {
         <div
           className="min-h-[420px] bg-cover bg-center"
           style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1555041469-a586c167ea46?w=1200&q=80')",
+            backgroundImage: `url('${DEMO_LIFESTYLE}')`,
           }}
         />
         <div className="flex flex-col justify-center bg-blanco px-8 py-16 lg:px-16">
@@ -141,18 +139,11 @@ export default async function HomePage() {
             <p className="text-[10px] uppercase tracking-label text-taupe">Síguenos en Instagram</p>
           </div>
           <div className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6 md:gap-3">
-            {[
-              "photo-1616486338812-3dadae4b4ace",
-              "photo-1555041469-a586c167ea46",
-              "photo-1493663284031-b7e3aefcae5e",
-              "photo-1586023492125-27b2c045efd7",
-              "photo-1567016432779-094069958ea5",
-              "photo-1631889992176-79e40c2b3160",
-            ].map((id) => (
+            {DEMO_INSTAGRAM_TILES.map((src) => (
               <div
-                key={id}
+                key={src}
                 className="aspect-square bg-grafito bg-cover bg-center"
-                style={{ backgroundImage: `url('https://images.unsplash.com/${id}?w=400&q=70')` }}
+                style={{ backgroundImage: `url('${src}')` }}
               />
             ))}
           </div>
@@ -165,8 +156,7 @@ export default async function HomePage() {
             <div
               className="absolute inset-0 bg-cover bg-center"
               style={{
-                backgroundImage:
-                  "url('https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1600&q=80')",
+                backgroundImage: `url('${DEMO_TESTIMONIAL}')`,
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-onix via-onix/70 to-onix/30" />

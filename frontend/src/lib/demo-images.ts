@@ -1,10 +1,39 @@
-export const DEMO_CATEGORY_IMAGES: Record<string, string> = {
-  livings: "https://images.unsplash.com/photo-1555041469-a586c167ea46?w=700&q=80",
-  cojines: "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=700&q=80",
-  "cortinas-pvc": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=700&q=80",
-  toldos: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=700&q=80",
-  quitasoles: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=700&q=80",
+/** Rutas estáticas en `public/demo/` (sin hotlinks externos). */
+
+export const DEMO_HERO = "/demo/hero.jpg";
+export const DEMO_LIFESTYLE = "/demo/lifestyle-workshop.jpg";
+export const DEMO_TESTIMONIAL = "/demo/testimonial.jpg";
+
+export const DEMO_PRODUCT_IMAGES: Record<string, string> = {
+  "sofa-nube-boucle": "/demo/products/sofa-nube-boucle.jpg",
+  "seccional-andes": "/demo/products/seccional-andes.jpg",
+  "sofa-valparaiso": "/demo/products/sofa-valparaiso.jpg",
+  "chesterfield-oliva": "/demo/products/chesterfield-oliva.jpg",
+  "cojin-boucle-marfil": "/demo/products/cojin-boucle-marfil.jpg",
+  "cierre-pvc-quincho": "/demo/products/cierre-pvc-quincho.jpg",
+  "toldo-retractil": "/demo/products/toldo-retractil.jpg",
+  "quitasol-3x3": "/demo/products/quitasol-3x3.jpg",
 };
 
-export const DEFAULT_CATEGORY_IMAGE =
-  "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=700&q=80";
+export const DEMO_CATEGORY_IMAGES: Record<string, string> = {
+  livings: "/demo/categories/livings.jpg",
+  cojines: "/demo/categories/cojines.jpg",
+  "cortinas-pvc": "/demo/categories/cortinas-pvc.jpg",
+  toldos: "/demo/categories/toldos.jpg",
+  quitasoles: "/demo/categories/quitasoles.jpg",
+};
+
+export const DEFAULT_CATEGORY_IMAGE = "/demo/categories/default.jpg";
+
+export const DEMO_INSTAGRAM_TILES = [
+  "/demo/instagram/01.jpg",
+  "/demo/instagram/02.jpg",
+  "/demo/instagram/03.jpg",
+  "/demo/instagram/04.jpg",
+  "/demo/instagram/05.jpg",
+  "/demo/instagram/06.jpg",
+];
+
+export function categoryImageForSlug(slug: string) {
+  return DEMO_CATEGORY_IMAGES[slug] ?? DEFAULT_CATEGORY_IMAGE;
+}

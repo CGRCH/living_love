@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { API_URL, mediaUrl } from "@/lib/api";
+import { DEMO_PRODUCT_IMAGES } from "@/lib/demo-images";
 import { Button } from "@/components/ui/Button";
 import { Badge, PriceTag } from "@/components/ui/PriceTag";
 
@@ -85,7 +86,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
     return <div className="mx-auto max-w-7xl px-4 py-20">Cargando…</div>;
   }
 
-  const mainImage = mediaUrl(product.images?.[0]?.image);
+  const mainImage = mediaUrl(product.images?.[0]?.image) || DEMO_PRODUCT_IMAGES[product.slug] || null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 lg:px-8">

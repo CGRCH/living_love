@@ -59,6 +59,7 @@ export async function fetchCommunes(regionId: number) {
 export function mediaUrl(path?: string | null) {
   if (!path) return null;
   if (path.startsWith("http")) return path;
+  if (path.startsWith("/demo/")) return path;
   return `${API_URL}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 

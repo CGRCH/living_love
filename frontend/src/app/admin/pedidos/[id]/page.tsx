@@ -5,7 +5,18 @@ import { adminFetch, adminUpload } from "@/lib/admin-api";
 import { Button } from "@/components/ui/Button";
 import { formatCLP } from "@/lib/api";
 
-const statuses = ["pending", "paid", "deposit_paid", "in_workshop", "ready", "shipped", "delivered", "cancelled"];
+import { orderStatusLabel } from "@/lib/order-status";
+
+const statuses = [
+  "pending",
+  "paid",
+  "deposit_paid",
+  "in_workshop",
+  "ready",
+  "shipped",
+  "delivered",
+  "cancelled",
+];
 
 export default function AdminOrderDetailPage({ params }: { params: { id: string } }) {
   const [order, setOrder] = useState<Record<string, unknown> | null>(null);
@@ -29,7 +40,7 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
         <select className="border border-arena px-2 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
           {statuses.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {orderStatusLabel(s)}
             </option>
           ))}
         </select>

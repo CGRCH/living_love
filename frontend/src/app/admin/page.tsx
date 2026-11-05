@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { adminFetch } from "@/lib/admin-api";
 import { formatCLP } from "@/lib/api";
+import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
 
 type Dashboard = {
   sales_month: number;
@@ -22,6 +23,9 @@ export default function AdminDashboardPage() {
   }, []);
 
   if (!data) return <p>Cargando panel…</p>;
+
+  const chartMax = Math.max(...data.sales_chart.map((m) => m.total), 1);
+  const barAreaHeight = 128;
 
   return (
     <div data-testid="admin-dashboard-ready">
@@ -44,17 +48,24 @@ export default function AdminDashboardPage() {
       </div>
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         <div className="bg-blanco p-6">
-          <p className="font-serif text-xl">Ventas 2026</p>
-          <div className="mt-6 flex h-40 items-end gap-2">
-            {data.sales_chart.map((m) => (
-              <div key={m.month} className="flex flex-1 flex-col items-center gap-1">
-                <div
-                  className="w-full bg-onix"
-                  style={{ height: `${Math.max(8, m.total / 500000)}px` }}
-                />
-                <span className="text-[10px] text-taupe">{m.month}</span>
-              </div>
-            ))}
+          <p className="font-serif text-xl">Ventas {new Date().getFullYear()}</p>
+          <div className="mt-6 flex h-40 items-end gap-1 border-b border-arena/30 pb-1">
+            {data.sales_chart.map((m) => {
+              const height = m.total ? Math.max(6, Math.round((m.total / chartMax) * barAreaHeight)) : 4;
+              return (
+                <div key={m.month} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                  <span className="text-[9px] tabular-nums text-taupe">
+                    {m.total ? `${Math.round(m.total / 1000)}k` : "—"}
+                  </span>
+                  <div
+                    className="w-full max-w-[2rem] rounded-t-sm bg-gradient-to-t from-onix to-grafito"
+                    style={{ height: `${height}px` }}
+                    title={formatCLP(m.total)}
+                  />
+                  <span className="text-[10px] uppercase text-taupe">{m.month}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="bg-onix p-6 text-blanco">
@@ -94,7 +105,7 @@ export default function AdminDashboardPage() {
                 <td>{o.email}</td>
                 <td>{formatCLP(o.total)}</td>
                 <td>
-                  <span className="bg-marfil px-2 py-1 text-[10px] uppercase">{o.status}</span>
+                  <OrderStatusBadge status={o.status} />
                 </td>
               </tr>
             ))}

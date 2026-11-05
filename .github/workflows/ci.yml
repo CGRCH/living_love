@@ -62,6 +62,7 @@ jobs:
         env:
           DATABASE_URL: sqlite:///db_ci.sqlite3
           SECRET_KEY: ci-secret
+      - run: chmod +x scripts/fetch-demo-images.sh && ./scripts/fetch-demo-images.sh
       - run: |
           cd frontend
           npm ci

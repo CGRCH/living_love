@@ -64,8 +64,10 @@ class AdminDashboardView(APIView):
             .annotate(total=Sum("total"))
             .order_by("month")
         )
+        month_totals = {row["month"].month: row["total"] or 0 for row in monthly if row["month"]}
+        month_labels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
         chart = [
-            {"month": row["month"].strftime("%b"), "total": row["total"] or 0} for row in monthly
+            {"month": month_labels[i], "total": month_totals.get(i + 1, 0)} for i in range(12)
         ]
 
         top_products = (

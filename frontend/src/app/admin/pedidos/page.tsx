@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { adminFetch } from "@/lib/admin-api";
 import { formatCLP } from "@/lib/api";
+import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<{ id: number; number: string; status: string; email: string; total: number }[]>([]);
@@ -31,7 +32,9 @@ export default function AdminOrdersPage() {
               <td className="p-2">{o.number}</td>
               <td>{o.email}</td>
               <td>{formatCLP(o.total)}</td>
-              <td className="uppercase">{o.status}</td>
+              <td>
+                <OrderStatusBadge status={o.status} />
+              </td>
               <td>
                 <Link href={`/admin/pedidos/${o.id}`} className="underline">
                   Detalle

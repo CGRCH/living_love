@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { mediaUrl } from "@/lib/api";
+import { DEMO_PRODUCT_IMAGES } from "@/lib/demo-images";
 import { PriceTag, ColorDots } from "@/components/ui/PriceTag";
 
 export type ProductSummary = {
@@ -13,7 +14,7 @@ export type ProductSummary = {
 };
 
 export function ProductCard({ product }: { product: ProductSummary }) {
-  const img = mediaUrl(product.images?.[0]?.image);
+  const img = mediaUrl(product.images?.[0]?.image) || DEMO_PRODUCT_IMAGES[product.slug] || null;
   const quoteOnly = product.price_mode === "quote_only";
   const colors =
     product.option_groups?.flatMap((g) => g.values?.map((v) => v.swatch_hex || "") || []) || [];
