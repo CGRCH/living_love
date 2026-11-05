@@ -1,4 +1,5 @@
 import pytest
+import uuid
 from datetime import timedelta
 from django.test import override_settings
 from rest_framework.test import APIClient
@@ -50,7 +51,7 @@ def test_cart_invalid_product_returns_404(client):
         "/api/cart/items/",
         {"product_id": 999999, "qty": 1, "options": {}},
         content_type="application/json",
-        HTTP_X_CART_SESSION="qa-session-404",
+        HTTP_X_CART_SESSION=str(uuid.uuid4()),
     )
     assert res.status_code == 404
 
@@ -64,7 +65,7 @@ def test_cart_invalid_qty_returns_400(client):
         "/api/cart/items/",
         {"product_id": product.id, "qty": "abc", "options": {}},
         content_type="application/json",
-        HTTP_X_CART_SESSION="qa-session-qty",
+        HTTP_X_CART_SESSION=str(uuid.uuid4()),
     )
     assert res.status_code == 400
 
@@ -163,7 +164,7 @@ def test_coupon_preview_valid(client):
         base_price=5000,
         is_active=True,
     )
-    session = "coupon-preview-session"
+    session = str(uuid.uuid4())
     client.post(
         "/api/cart/items/",
         {"product_id": product.id, "qty": 2, "options": {}},
@@ -188,7 +189,7 @@ def test_coupon_preview_invalid(client):
         "/api/cart/apply-coupon/",
         {"coupon_code": "NOEXISTE"},
         content_type="application/json",
-        HTTP_X_CART_SESSION="no-coupon",
+        HTTP_X_CART_SESSION=str(uuid.uuid4()),
     )
     assert res.status_code == 200
     assert res.json()["valid"] is False

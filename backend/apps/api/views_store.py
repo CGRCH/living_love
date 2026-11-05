@@ -1,4 +1,3 @@
-import secrets
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
@@ -33,7 +32,15 @@ from apps.billing.models import TaxDocumentSettings
 from apps.cart.models import Cart, CartItem
 from apps.catalog.models import Category, Fabric, Product
 from apps.catalog.pricing import calculate_unit_price, compute_deposit_amounts, order_requires_deposit
+from apps.common.cart_session import mint_session_if_missing, validate_client_cart_session
 from apps.common.rut import validate_rut
+from apps.common.throttling import (
+    AuthRegisterThrottle,
+    CheckoutThrottle,
+    PaymentStartThrottle,
+    PaymentWebhookThrottle,
+    QuoteCreateThrottle,
+)
 from apps.content.models import HomeContent, Testimonial
 from apps.orders.models import Order, OrderEvent, OrderItem
 from apps.orders.services import apply_coupon, finalize_payment, preview_coupon, send_order_email
@@ -48,12 +55,28 @@ from apps.store_settings.models import StoreSettings
 User = get_user_model()
 
 
+class CartSessionError(Exception):
+    def __init__(self, response: Response):
+        self.response = response
+
+
 def get_session_key(request):
     return request.headers.get("X-Cart-Session") or request.data.get("session_key") or ""
 
 
+def cart_session_error_response(session_key: str):
+    err = validate_client_cart_session(session_key)
+    if err:
+        return Response({"detail": err}, status=status.HTTP_400_BAD_REQUEST)
+    return None
+
+
 def get_or_create_cart(request):
     session_key = get_session_key(request)
+    bad = cart_session_error_response(session_key)
+    if bad is not None:
+        raise CartSessionError(bad)
+
     if request.user.is_authenticated:
         cart, _ = Cart.objects.get_or_create(user=request.user, defaults={"session_key": session_key})
         if session_key:
@@ -70,15 +93,25 @@ def get_or_create_cart(request):
                 guest.delete()
         return cart
     if not session_key:
-        session_key = str(uuid4())
+        session_key = mint_session_if_missing("")
+    else:
+        session_key = mint_session_if_missing(session_key)
     cart, _ = Cart.objects.get_or_create(session_key=session_key, user=None)
     cart.session_key = session_key
     cart.save(update_fields=["session_key"])
     return cart
 
 
+def resolve_cart(request):
+    try:
+        return get_or_create_cart(request), None
+    except CartSessionError as exc:
+        return None, exc.response
+
+
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
+    throttle_classes = [AuthRegisterThrottle]
 
 
 class MeView(APIView):
@@ -151,21 +184,27 @@ class PriceCalculateView(APIView):
 
 class CartView(APIView):
     def get(self, request):
-        cart = get_or_create_cart(request)
+        cart, err = resolve_cart(request)
+        if err:
+            return err
         data = CartSerializer(cart).data
         if not request.user.is_authenticated:
             data["session_key"] = cart.session_key
         return Response(data)
 
     def delete(self, request):
-        cart = get_or_create_cart(request)
+        cart, err = resolve_cart(request)
+        if err:
+            return err
         cart.items.all().delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CartCouponPreviewView(APIView):
     def post(self, request):
-        cart = get_or_create_cart(request)
+        cart, err = resolve_cart(request)
+        if err:
+            return err
         subtotal = sum(i.line_total for i in cart.items.select_related("product"))
         code = (request.data.get("coupon_code") or "").strip()
         discount, err = preview_coupon(code, subtotal)
@@ -182,7 +221,9 @@ class CartCouponPreviewView(APIView):
 
 class CartItemView(APIView):
     def post(self, request):
-        cart = get_or_create_cart(request)
+        cart, err = resolve_cart(request)
+        if err:
+            return err
         product_id = request.data.get("product_id")
         options = request.data.get("options", {})
         try:
@@ -209,7 +250,9 @@ class CartItemView(APIView):
         return Response(resp, status=201)
 
     def patch(self, request, item_id):
-        cart = get_or_create_cart(request)
+        cart, err = resolve_cart(request)
+        if err:
+            return err
         try:
             item = CartItem.objects.get(id=item_id, cart=cart)
         except CartItem.DoesNotExist:
@@ -227,7 +270,9 @@ class CartItemView(APIView):
         return Response(CartItemSerializer(item).data)
 
     def delete(self, request, item_id):
-        cart = get_or_create_cart(request)
+        cart, err = resolve_cart(request)
+        if err:
+            return err
         CartItem.objects.filter(id=item_id, cart=cart).delete()
         return Response(status=204)
 
@@ -311,6 +356,7 @@ class HomeContentView(APIView):
 class QuoteCreateView(generics.CreateAPIView):
     queryset = Quote.objects.all()
     serializer_class = QuoteCreateSerializer
+    throttle_classes = [QuoteCreateThrottle]
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
@@ -342,12 +388,16 @@ class OrderDetailView(generics.RetrieveAPIView):
 
 
 class CheckoutView(APIView):
+    throttle_classes = [CheckoutThrottle]
+
     @transaction.atomic
     def post(self, request):
         ser = CheckoutSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
-        cart = get_or_create_cart(request)
+        cart, err = resolve_cart(request)
+        if err:
+            return err
         if not cart.items.exists():
             return Response({"detail": "Carro vacío"}, status=400)
 
@@ -457,6 +507,8 @@ class CheckoutView(APIView):
 
 
 class PaymentSimulatedConfirmView(APIView):
+    throttle_classes = [PaymentStartThrottle]
+
     def post(self, request, payment_id):
         from django.conf import settings as dj_settings
 
@@ -479,6 +531,8 @@ class PaymentSimulatedConfirmView(APIView):
 
 
 class PaymentCallbackView(APIView):
+    throttle_classes = [PaymentWebhookThrottle]
+
     def post(self, request, provider_code):
         try:
             cfg = PaymentProviderConfig.objects.get(code=provider_code)
@@ -503,6 +557,8 @@ class PaymentCallbackView(APIView):
 
 
 class QuotePayView(APIView):
+    throttle_classes = [PaymentStartThrottle]
+
     def get(self, request, token):
         quote = Quote.objects.filter(payment_token=token).first()
         if not quote or quote.status not in (Quote.Status.ANSWERED, Quote.Status.ACCEPTED):

@@ -3,12 +3,14 @@ import io
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.http import HttpResponse
-from django.db.models import Avg, Count, Sum
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Avg, Sum
 from django.db.models.functions import TruncMonth
+from django.http import HttpResponse
 from django.utils import timezone
-from rest_framework import generics, status, viewsets
+from rest_framework import generics, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -27,6 +29,7 @@ from apps.api.serializers import (
 from apps.billing.models import TaxDocument, TaxDocumentSettings
 from apps.catalog.models import Category, Fabric, OptionGroup, OptionValue, Product, ProductImage
 from apps.common.crypto import decrypt_credentials, encrypt_credentials
+from apps.common.uploads import validate_csv_upload, validate_image_upload, validate_pdf_upload
 from apps.content.models import HomeContent, Testimonial
 from apps.orders.models import Order, OrderEvent, OrderItem
 from apps.orders.services import finalize_payment
@@ -134,6 +137,10 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
     def upload_document(self, request, pk=None):
         order = self.get_object()
         pdf = request.FILES.get("pdf")
+        try:
+            validate_pdf_upload(pdf)
+        except DjangoValidationError as exc:
+            raise ValidationError({"pdf": exc.messages})
         doc_type = request.data.get("type", order.doc_type)
         folio = request.data.get("folio", "")
         doc = TaxDocument.objects.create(
@@ -257,9 +264,14 @@ class AdminProductViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
     def upload_image(self, request, slug=None):
         product = self.get_object()
+        image_file = request.FILES.get("image")
+        try:
+            validate_image_upload(image_file)
+        except DjangoValidationError as exc:
+            raise ValidationError({"image": exc.messages})
         img = ProductImage.objects.create(
             product=product,
-            image=request.FILES.get("image"),
+            image=image_file,
             alt=request.data.get("alt", product.name),
             order=int(request.data.get("order", 0)),
         )
@@ -304,6 +316,10 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         file = request.FILES.get("file")
         if not file:
             return Response({"detail": "Archivo requerido"}, status=400)
+        try:
+            validate_csv_upload(file)
+        except DjangoValidationError as exc:
+            return Response({"detail": exc.messages[0]}, status=400)
         reader = csv.DictReader(io.StringIO(file.read().decode("utf-8")))
         count = 0
         for row in reader:
@@ -477,6 +493,10 @@ class AdminShippingRatesImportView(APIView):
         file = request.FILES.get("file")
         if not file:
             return Response({"detail": "Archivo requerido"}, status=400)
+        try:
+            validate_csv_upload(file)
+        except DjangoValidationError as exc:
+            return Response({"detail": exc.messages[0]}, status=400)
         decoded = file.read().decode("utf-8")
         reader = csv.DictReader(io.StringIO(decoded))
         count = 0
