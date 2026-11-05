@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f7f3ec;
+  --foreground: #0b0b0b;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-jost), "Jost", system-ui, sans-serif;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  .font-serif {
+    font-family: var(--font-bodoni), "Bodoni Moda", Georgia, serif;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
