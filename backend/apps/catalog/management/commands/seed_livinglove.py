@@ -95,6 +95,14 @@ class Command(BaseCommand):
             region=rm, commune=None, defaults={"price": 0, "lead_days": 5, "is_active": True}
         )
 
+        for name in ["Valparaíso", "Viña del Mar", "Concón", "Quilpué"]:
+            commune, _ = Commune.objects.get_or_create(region=valpo, name=name)
+            ShippingRate.objects.update_or_create(
+                region=valpo,
+                commune=commune,
+                defaults={"price": 89000, "lead_days": 7, "is_active": True},
+            )
+
         categories = {}
         for slug, label in [
             ("livings", "Livings"),

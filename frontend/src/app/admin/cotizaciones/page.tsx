@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminFetch } from "@/lib/admin-api";
+import { quoteStatusLabel } from "@/lib/quote-status";
 
 export default function AdminQuotesPage() {
   const [quotes, setQuotes] = useState<{ id: number; number: string; status: string; email: string }[]>([]);
@@ -18,7 +19,7 @@ export default function AdminQuotesPage() {
           <li key={q.id} className="flex justify-between px-4 py-4 text-sm">
             <span>{q.number}</span>
             <span>{q.email}</span>
-            <span>{q.status}</span>
+            <span>{quoteStatusLabel(q.status)}</span>
           </li>
         ))}
       </ul>

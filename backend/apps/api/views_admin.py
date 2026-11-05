@@ -47,9 +47,15 @@ class AdminDashboardView(APIView):
         now = timezone.now()
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         orders_month = Order.objects.filter(created_at__gte=month_start).exclude(
-            status=Order.Status.CANCELLED
+            status__in=[Order.Status.CANCELLED, Order.Status.REFUNDED]
         )
-        sales = orders_month.aggregate(total=Sum("total"))["total"] or 0
+        sales = (
+            Payment.objects.filter(
+                status=Payment.Status.APPROVED,
+                created_at__gte=month_start,
+            ).aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
         order_count = orders_month.count()
         open_quotes = Quote.objects.filter(
             status__in=[Quote.Status.NEW, Quote.Status.ANSWERED]
@@ -57,11 +63,13 @@ class AdminDashboardView(APIView):
         avg_ticket = orders_month.aggregate(avg=Avg("total"))["avg"] or 0
 
         monthly = (
-            Order.objects.filter(created_at__year=now.year)
-            .exclude(status=Order.Status.CANCELLED)
+            Payment.objects.filter(
+                status=Payment.Status.APPROVED,
+                created_at__year=now.year,
+            )
             .annotate(month=TruncMonth("created_at"))
             .values("month")
-            .annotate(total=Sum("total"))
+            .annotate(total=Sum("amount"))
             .order_by("month")
         )
         month_totals = {row["month"].month: row["total"] or 0 for row in monthly if row["month"]}

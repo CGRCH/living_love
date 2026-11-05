@@ -1,13 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { API_URL, fetchCommunes, fetchPublicSettings, fetchRegions, formatCLP } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
+
+type CartLine = {
+  id: number;
+  product: { name: string; slug: string; requires_deposit?: boolean };
+  qty: number;
+  line_total: number;
+};
+
+type CartPayload = {
+  items: CartLine[];
+  subtotal: number;
+  requires_deposit: boolean;
+};
+
+const DEPOSIT_PERCENT = 50;
 
 export default function CheckoutPage() {
   const [settings, setSettings] = useState<Awaited<ReturnType<typeof fetchPublicSettings>> | null>(
     null,
   );
+  const [cart, setCart] = useState<CartPayload | null>(null);
   const [regions, setRegions] = useState<{ id: number; name: string }[]>([]);
   const [communes, setCommunes] = useState<{ id: number; name: string }[]>([]);
   const [shipping, setShipping] = useState({ price: 0, label: "", pending_coordination: false });
@@ -29,6 +45,19 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     fetchPublicSettings().then(setSettings);
+    const session = localStorage.getItem("ll_cart_session") || "";
+    fetch(`${API_URL}/api/cart/`, { headers: { "X-Cart-Session": session } })
+      .then((r) => r.json())
+      .then((data) => {
+        setCart({
+          items: data.items || [],
+          subtotal: data.subtotal ?? 0,
+          requires_deposit: Boolean(data.requires_deposit),
+        });
+        if (data.session_key) {
+          localStorage.setItem("ll_cart_session", data.session_key);
+        }
+      });
     fetchRegions().then((r) => {
       setRegions(r.results ?? r);
       const rm = (r.results ?? r).find((x: { code: string }) => x.code === "RM");
@@ -47,6 +76,19 @@ export default function CheckoutPage() {
       .then((r) => r.json())
       .then(setShipping);
   }, [form.commune_id, form.shipping_method]);
+
+  const totals = useMemo(() => {
+    const subtotal = cart?.subtotal ?? 0;
+    const ship =
+      form.shipping_method === "delivery" && !shipping.pending_coordination ? shipping.price : 0;
+    const total = subtotal + ship;
+    const requiresDeposit = cart?.requires_deposit ?? false;
+    const amountDueNow = requiresDeposit
+      ? Math.round((total * DEPOSIT_PERCENT) / 100)
+      : total;
+    const balanceDue = requiresDeposit ? total - amountDueNow : 0;
+    return { subtotal, ship, total, amountDueNow, balanceDue, requiresDeposit };
+  }, [cart, form.shipping_method, shipping]);
 
   const submit = async () => {
     const session = localStorage.getItem("ll_cart_session") || "";
@@ -74,7 +116,13 @@ export default function CheckoutPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      alert(data.detail || "Error en checkout");
+      const msg =
+        data.detail ||
+        Object.entries(data)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join("\n") ||
+        "Error en checkout";
+      alert(msg);
       return;
     }
     window.location.href = data.payment_redirect;
@@ -250,6 +298,45 @@ export default function CheckoutPage() {
         </div>
         <aside className="h-fit bg-marfil p-6">
           <p className="text-[10px] uppercase tracking-label">Tu pedido</p>
+          <ul className="mt-4 space-y-3 border-b border-arena/40 pb-4 text-sm">
+            {(cart?.items ?? []).map((item) => (
+              <li key={item.id} className="flex justify-between gap-4">
+                <span>
+                  {item.product.name} × {item.qty}
+                </span>
+                <span>{formatCLP(item.line_total)}</span>
+              </li>
+            ))}
+            {!cart?.items?.length && (
+              <li className="text-taupe">Tu carro está vacío. Agrega productos antes de pagar.</li>
+            )}
+          </ul>
+          <dl className="mt-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <dt>Subtotal</dt>
+              <dd>{formatCLP(totals.subtotal)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>Despacho</dt>
+              <dd>{totals.ship ? formatCLP(totals.ship) : "Gratis"}</dd>
+            </div>
+            <div className="flex justify-between border-t border-arena/40 pt-2 font-serif text-lg">
+              <dt>Total</dt>
+              <dd>{formatCLP(totals.total)}</dd>
+            </div>
+            {totals.requiresDeposit && (
+              <>
+                <div className="flex justify-between text-champ">
+                  <dt>Abono a pagar ahora ({DEPOSIT_PERCENT}%)</dt>
+                  <dd>{formatCLP(totals.amountDueNow)}</dd>
+                </div>
+                <div className="flex justify-between text-taupe">
+                  <dt>Saldo en taller</dt>
+                  <dd>{formatCLP(totals.balanceDue)}</dd>
+                </div>
+              </>
+            )}
+          </dl>
           <label className="mt-4 block text-xs text-taupe">
             Cupón
             <input
@@ -259,12 +346,10 @@ export default function CheckoutPage() {
               placeholder="BIENVENIDA"
             />
           </label>
-          <Button full className="mt-8" onClick={submit}>
-            Pagar
+          <Button full className="mt-8" onClick={submit} disabled={!cart?.items?.length}>
+            Pagar {formatCLP(totals.amountDueNow)}
           </Button>
-          <p className="mt-4 text-center text-xs text-taupe">
-            {settings?.fabrication_notice}
-          </p>
+          <p className="mt-4 text-center text-xs text-taupe">{settings?.fabrication_notice}</p>
         </aside>
       </div>
     </div>

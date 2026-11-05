@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminFetch, adminUpload } from "@/lib/admin-api";
+import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
 import { Button } from "@/components/ui/Button";
 import { formatCLP } from "@/lib/api";
 
@@ -31,11 +32,70 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
 
   if (!order) return <p>Cargando…</p>;
 
+  const items = (order.items as { name_snapshot: string; qty: number; unit_price: number }[]) || [];
+  const payments =
+    (order.payments as { provider: string; amount: number; status: string; payment_kind: string }[]) ||
+    [];
+  const address = order.shipping_address as { name?: string; street?: string } | undefined;
+
   return (
     <div className="max-w-3xl">
       <h1 className="font-serif text-3xl">Pedido {order.number as string}</h1>
       <p className="mt-2 text-sm text-taupe">{order.email as string}</p>
-      <p className="mt-4 font-serif text-xl">{formatCLP(order.total as number)}</p>
+      <div className="mt-2">
+        <OrderStatusBadge status={String(order.status)} />
+      </div>
+
+      <div className="mt-8 grid gap-4 bg-blanco p-4 text-sm md:grid-cols-2">
+        <div>
+          <p className="text-[10px] uppercase tracking-label text-taupe">Despacho</p>
+          <p className="mt-2">{address?.name}</p>
+          <p>{address?.street}</p>
+          <p className="mt-1 text-taupe">{order.shipping_method as string}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-label text-taupe">Montos</p>
+          <p className="mt-2">Subtotal: {formatCLP(order.subtotal as number)}</p>
+          <p>Despacho: {formatCLP(order.shipping_cost as number)}</p>
+          <p className="font-serif text-lg">Total: {formatCLP(order.total as number)}</p>
+          {(order.deposit_amount as number) > 0 && (
+            <>
+              <p className="mt-2 text-champ">Abono: {formatCLP(order.deposit_amount as number)}</p>
+              <p>Saldo: {formatCLP(order.balance_due as number)}</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-6 bg-blanco p-4">
+        <p className="text-[10px] uppercase tracking-label text-taupe">Productos</p>
+        <ul className="mt-3 space-y-2 text-sm">
+          {items.map((item) => (
+            <li key={`${item.name_snapshot}-${item.qty}`} className="flex justify-between">
+              <span>
+                {item.name_snapshot} × {item.qty}
+              </span>
+              <span>{formatCLP(item.unit_price * item.qty)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {payments.length > 0 && (
+        <div className="mt-6 bg-blanco p-4 text-sm">
+          <p className="text-[10px] uppercase tracking-label text-taupe">Pagos</p>
+          <ul className="mt-3 space-y-2">
+            {payments.map((p) => (
+              <li key={`${p.provider}-${p.amount}`} className="flex justify-between">
+                <span>
+                  {p.provider} ({p.payment_kind}) — {p.status}
+                </span>
+                <span>{formatCLP(p.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="mt-8 flex flex-wrap gap-2 bg-blanco p-4">
         <select className="border border-arena px-2 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
           {statuses.map((s) => (

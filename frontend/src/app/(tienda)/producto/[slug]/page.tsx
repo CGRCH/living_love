@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { API_URL, mediaUrl } from "@/lib/api";
 import { DEMO_PRODUCT_IMAGES } from "@/lib/demo-images";
@@ -37,14 +38,23 @@ type Product = {
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
   const [product, setProduct] = useState<Product | null>(null);
+  const [missing, setMissing] = useState(false);
   const [selection, setSelection] = useState<Record<number, number | number[]>>({});
   const [unitPrice, setUnitPrice] = useState(0);
   const [triggersQuote, setTriggersQuote] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/api/products/${params.slug}/`)
-      .then((r) => r.json())
-      .then((p: Product) => {
+      .then(async (r) => {
+        if (r.status === 404) {
+          setMissing(true);
+          return null;
+        }
+        if (!r.ok) throw new Error("product");
+        return r.json();
+      })
+      .then((p: Product | null) => {
+        if (!p) return;
         setProduct(p);
         const initial: Record<number, number> = {};
         p.option_groups?.forEach((g) => {
@@ -52,7 +62,8 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
         });
         setSelection(initial);
         setUnitPrice(p.base_price);
-      });
+      })
+      .catch(() => setMissing(true));
   }, [params.slug]);
 
   useEffect(() => {
@@ -66,10 +77,12 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ product_id: product.id, options }),
     })
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        setUnitPrice(data.unit_price);
-        setTriggersQuote(data.triggers_quote);
+        if (data && typeof data.unit_price === "number") {
+          setUnitPrice(data.unit_price);
+          setTriggersQuote(Boolean(data.triggers_quote));
+        }
       });
   }, [product, selection]);
 
@@ -81,6 +94,10 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
       `Hola Living Love, me interesa ${product.name}. Opciones: ${JSON.stringify(selection)}`,
     );
   }, [product, selection]);
+
+  if (missing) {
+    notFound();
+  }
 
   if (!product) {
     return <div className="mx-auto max-w-7xl px-4 py-20">Cargando…</div>;
@@ -101,7 +118,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
           ) : (
             <div className="flex h-full items-center justify-center text-taupe">Imagen demo</div>
           )}
-          <Badge className="absolute left-4 top-4 bg-onix text-blanco">Hecho a medida</Badge>
+          <Badge className="absolute left-4 top-4">Hecho a medida</Badge>
         </div>
         <div>
           <p className="text-[10px] uppercase tracking-label text-champ">Colección</p>
@@ -172,7 +189,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                   Object.entries(selection).forEach(([k, v]) => {
                     options[k] = v as number;
                   });
-                  await fetch(`${API_URL}/api/cart/items/`, {
+                  const res = await fetch(`${API_URL}/api/cart/items/`, {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
@@ -184,6 +201,14 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                       qty: 1,
                     }),
                   });
+                  const data = await res.json().catch(() => ({}));
+                  if (!res.ok) {
+                    alert(data.detail || "No se pudo agregar al carro");
+                    return;
+                  }
+                  if (data.session_key) {
+                    localStorage.setItem("ll_cart_session", data.session_key);
+                  }
                   window.location.href = "/carro";
                 }}
               >

@@ -27,6 +27,19 @@ test.describe("Living Love tienda", () => {
     await page.screenshot({ path: "test-results/artifact-category.png", fullPage: true });
   });
 
+  test("browser agregar al carro y ver checkout", async ({ page }) => {
+    await page.goto("/producto/cojin-boucle-marfil");
+    await waitForV3Styles(page, { storeHome: false });
+    await page.getByRole("button", { name: /agregar al carro/i }).click();
+    await page.waitForURL("**/carro");
+    await expect(page.getByRole("listitem").filter({ hasText: /Cojín Bouclé Marfil/ })).toBeVisible();
+    await expect(page.getByText("Subtotal").locator("..").getByText(/\$39\.000/)).toBeVisible();
+    await page.goto("/checkout");
+    await expect(page.getByText("Tu pedido")).toBeVisible();
+    await expect(page.getByText("Subtotal")).toBeVisible();
+    await page.screenshot({ path: "test-results/artifact-cart-checkout-summary.png", fullPage: true });
+  });
+
   test("checkout simulado flujo", async ({ page, request }) => {
     const session = "e2e-cart-session-2";
     await request.post("http://localhost:8000/api/cart/items/", {

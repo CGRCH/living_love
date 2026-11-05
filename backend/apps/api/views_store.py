@@ -39,6 +39,7 @@ from apps.orders.models import Order, OrderEvent, OrderItem
 from apps.orders.services import apply_coupon, finalize_payment, send_order_email
 from apps.payments.models import Payment, PaymentProviderConfig
 from apps.payments.providers import get_provider
+from apps.payments.webhook_auth import resolve_payment_from_payload, verify_payment_webhook
 from apps.quotes.models import Quote
 from apps.shipping.models import Commune, Region
 from apps.shipping.services import quote_shipping
@@ -167,8 +168,16 @@ class CartItemView(APIView):
         cart = get_or_create_cart(request)
         product_id = request.data.get("product_id")
         options = request.data.get("options", {})
-        qty = int(request.data.get("qty", 1))
-        product = Product.objects.get(id=product_id, is_active=True)
+        try:
+            qty = int(request.data.get("qty", 1))
+        except (TypeError, ValueError):
+            return Response({"detail": "Cantidad inválida"}, status=400)
+        if qty < 1:
+            return Response({"detail": "Cantidad inválida"}, status=400)
+        try:
+            product = Product.objects.get(id=product_id, is_active=True)
+        except (Product.DoesNotExist, TypeError, ValueError):
+            return Response({"detail": "Producto no encontrado"}, status=404)
         if product.price_mode == Product.PriceMode.QUOTE_ONLY:
             return Response({"detail": "Producto solo cotización"}, status=400)
         unit_price, triggers_quote = calculate_unit_price(product, options)
@@ -184,10 +193,19 @@ class CartItemView(APIView):
 
     def patch(self, request, item_id):
         cart = get_or_create_cart(request)
-        item = CartItem.objects.get(id=item_id, cart=cart)
+        try:
+            item = CartItem.objects.get(id=item_id, cart=cart)
+        except CartItem.DoesNotExist:
+            return Response({"detail": "Ítem no encontrado"}, status=404)
         qty = request.data.get("qty")
         if qty is not None:
-            item.qty = max(1, int(qty))
+            try:
+                qty_int = int(qty)
+            except (TypeError, ValueError):
+                return Response({"detail": "Cantidad inválida"}, status=400)
+            if qty_int < 1:
+                return Response({"detail": "Cantidad inválida"}, status=400)
+            item.qty = qty_int
             item.save(update_fields=["qty"])
         return Response(CartItemSerializer(item).data)
 
@@ -202,11 +220,15 @@ class ShippingQuoteView(APIView):
         commune_id = request.query_params.get("commune")
         region_id = request.query_params.get("region")
         method = request.query_params.get("method", "delivery")
-        result = quote_shipping(
-            int(commune_id) if commune_id else None,
-            int(region_id) if region_id else None,
-            method,
-        )
+        try:
+            commune_int = int(commune_id) if commune_id else None
+        except (TypeError, ValueError):
+            return Response({"detail": "Comuna inválida"}, status=400)
+        try:
+            region_int = int(region_id) if region_id else None
+        except (TypeError, ValueError):
+            return Response({"detail": "Región inválida"}, status=400)
+        result = quote_shipping(commune_int, region_int, method)
         return Response(result)
 
 
@@ -255,7 +277,9 @@ class HomeContentView(APIView):
     def get(self, request):
         sections = HomeContent.objects.filter(is_active=True)
         testimonials = Testimonial.objects.filter(is_active=True)
-        categories = Category.objects.filter(is_active=True, parent__isnull=True)[:5]
+        categories = Category.objects.filter(is_active=True, parent__isnull=True).exclude(
+            slug__startswith="demo-"
+        )[:5]
         featured = Product.objects.filter(is_active=True, is_featured=True)[:8]
         return Response(
             {
@@ -417,8 +441,17 @@ class CheckoutView(APIView):
 
 class PaymentSimulatedConfirmView(APIView):
     def post(self, request, payment_id):
+        from django.conf import settings as dj_settings
+
+        if not dj_settings.DEBUG and not dj_settings.PAYMENTS_ALLOW_SIMULATED_CONFIRM:
+            return Response({"detail": "No disponible"}, status=403)
         action = request.data.get("action", "approve")
-        payment = Payment.objects.select_related("order").get(id=payment_id)
+        try:
+            payment = Payment.objects.select_related("order").get(id=payment_id)
+        except Payment.DoesNotExist:
+            return Response({"detail": "Pago no encontrado"}, status=404)
+        if payment.provider != "simulated" and not dj_settings.DEBUG:
+            return Response({"detail": "Pasarela no permitida"}, status=403)
         cfg = PaymentProviderConfig.objects.filter(code=payment.provider).first()
         provider = get_provider(cfg) if cfg else get_provider(
             PaymentProviderConfig(code="simulated", display_name="Sim")
@@ -430,21 +463,23 @@ class PaymentSimulatedConfirmView(APIView):
 
 class PaymentCallbackView(APIView):
     def post(self, request, provider_code):
-        idempotency = request.headers.get("X-Idempotency-Key") or request.data.get("idempotency_key")
-        external_id = request.data.get("checkout_id") or request.data.get("external_id")
-        payment = Payment.objects.filter(
-            provider=provider_code, external_id=external_id
-        ).first()
-        if not payment and request.data.get("payment_id"):
-            payment = Payment.objects.filter(id=request.data.get("payment_id")).first()
+        try:
+            cfg = PaymentProviderConfig.objects.get(code=provider_code)
+        except PaymentProviderConfig.DoesNotExist:
+            return Response({"detail": "Pasarela desconocida"}, status=404)
+        provider = get_provider(cfg)
+        if not verify_payment_webhook(request, provider):
+            return Response({"detail": "No autorizado"}, status=403)
+
+        payment = resolve_payment_from_payload(provider_code, request.data)
         if not payment:
             return Response({"detail": "Pago no encontrado"}, status=404)
+
+        idempotency = request.headers.get("X-Idempotency-Key") or request.data.get("idempotency_key")
         if idempotency and payment.idempotency_key == idempotency:
             existing = payment.raw.get("webhook_duplicate")
             if existing:
                 return Response({"status": payment.status})
-        cfg = PaymentProviderConfig.objects.get(code=provider_code)
-        provider = get_provider(cfg)
         status_result, raw = provider.confirm(request.data)
         finalize_payment(payment, status_result, raw)
         return Response({"status": payment.status})

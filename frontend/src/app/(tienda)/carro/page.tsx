@@ -20,7 +20,12 @@ export default function CartPage() {
     const session = localStorage.getItem("ll_cart_session") || "";
     fetch(`${API_URL}/api/cart/`, { headers: { "X-Cart-Session": session } })
       .then((r) => r.json())
-      .then((data) => setItems(data.items || []));
+      .then((data) => {
+        setItems(data.items || []);
+        if (data.session_key) {
+          localStorage.setItem("ll_cart_session", data.session_key);
+        }
+      });
   };
 
   useEffect(() => {

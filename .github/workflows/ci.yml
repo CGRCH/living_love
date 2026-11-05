@@ -61,7 +61,8 @@ jobs:
           python manage.py runserver 0.0.0.0:8000 &
         env:
           DATABASE_URL: sqlite:///db_ci.sqlite3
-          SECRET_KEY: ci-secret
+          SECRET_KEY: ci-secret-key-at-least-32-bytes-long
+          PAYMENTS_ALLOW_SIMULATED_CONFIRM: "1"
       - run: chmod +x scripts/fetch-demo-images.sh && ./scripts/fetch-demo-images.sh
       - run: |
           cd frontend

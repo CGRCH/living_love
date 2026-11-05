@@ -31,13 +31,21 @@ export default function AdminProductEditPage({ params }: { params: { slug: strin
     load();
   };
 
+  const FIELD_LABELS: Record<string, string> = {
+    name: "Nombre",
+    slug: "Slug",
+    base_price: "Precio base",
+    price_mode: "Modo de precio",
+    lead_time_text: "Plazo de fabricación",
+  };
+
   return (
     <div className="max-w-3xl">
       <h1 className="font-serif text-3xl">{product.name as string}</h1>
       <div className="mt-6 space-y-3 bg-blanco p-4">
         {["name", "slug", "base_price", "price_mode", "lead_time_text"].map((field) => (
           <label key={field} className="block text-xs uppercase tracking-label text-taupe">
-            {field}
+            {FIELD_LABELS[field] ?? field}
             <input
               className="mt-1 w-full border border-arena px-2 py-2 text-sm normal-case"
               value={String(product[field] ?? "")}

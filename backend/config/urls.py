@@ -89,6 +89,7 @@ urlpatterns = [
     ),
     path("api/categories/", CategoryListView.as_view()),
     path("api/products/", ProductListView.as_view()),
+    path("api/products/calculate-price/", PriceCalculateView.as_view()),
     path("api/products/<slug:slug>/", ProductDetailView.as_view()),
     path("api/fabrics/", FabricListView.as_view()),
     path("api/cart/", CartView.as_view()),
@@ -103,7 +104,6 @@ urlpatterns = [
     path("api/me/quotes/", MyQuotesView.as_view()),
     path("api/settings/public/", PublicSettingsView.as_view()),
     path("api/home/", HomeContentView.as_view()),
-    path("api/products/calculate-price/", PriceCalculateView.as_view()),
     path(
         "api/payments/simulated/<int:payment_id>/confirm/",
         PaymentSimulatedConfirmView.as_view(),

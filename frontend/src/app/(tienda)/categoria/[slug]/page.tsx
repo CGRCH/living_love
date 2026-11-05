@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { fetchProducts } from "@/lib/api";
+import { notFound } from "next/navigation";
+import { fetchCategories, fetchProducts } from "@/lib/api";
 import { categoryImageForSlug } from "@/lib/demo-images";
 import { ProductCard } from "@/components/catalog/ProductCard";
 
@@ -12,6 +13,11 @@ const labels: Record<string, string> = {
 };
 
 export default async function CategoryPage({ params }: { params: { slug: string } }) {
+  const categories = await fetchCategories();
+  const list = Array.isArray(categories) ? categories : categories.results ?? [];
+  if (!list.some((c: { slug: string }) => c.slug === params.slug)) {
+    notFound();
+  }
   const products = await fetchProducts({ category: params.slug });
   const title = labels[params.slug] || params.slug;
 

@@ -16,6 +16,8 @@ env = environ.Env(
     PAYMENTS_ENCRYPTION_KEY=(str, ""),
     SUMUP_API_KEY=(str, ""),
     SUMUP_MERCHANT_CODE=(str, ""),
+    PAYMENT_WEBHOOK_SECRET=(str, ""),
+    PAYMENTS_ALLOW_SIMULATED_CONFIRM=(bool, False),
 )
 
 environ.Env.read_env(BASE_DIR.parent / ".env")
@@ -101,8 +103,14 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+from corsheaders.defaults import default_headers
+
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-cart-session",
+    "X-Cart-Session",
+]
 
 FRONTEND_URL = env("FRONTEND_URL")
 
@@ -146,6 +154,10 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="tienda@livinglove.cl")
 PAYMENTS_ENCRYPTION_KEY = env("PAYMENTS_ENCRYPTION_KEY") or SECRET_KEY[:32].ljust(32, "x")
 SUMUP_API_KEY = env("SUMUP_API_KEY")
 SUMUP_MERCHANT_CODE = env("SUMUP_MERCHANT_CODE")
+PAYMENT_WEBHOOK_SECRET = env("PAYMENT_WEBHOOK_SECRET")
+PAYMENTS_ALLOW_SIMULATED_CONFIRM = env.bool(
+    "PAYMENTS_ALLOW_SIMULATED_CONFIRM", default=DEBUG
+)
 
 CUSTOM_DEPOSIT_PERCENT = 50
 

@@ -5,7 +5,7 @@ from apps.billing.models import TaxDocument, TaxDocumentSettings
 from apps.cart.models import Cart, CartItem
 from apps.catalog.demo_media import DEMO_PRODUCT_IMAGES
 from apps.catalog.models import Category, Fabric, OptionGroup, OptionValue, Product, ProductImage
-from apps.catalog.pricing import calculate_unit_price
+from apps.catalog.pricing import calculate_unit_price, order_requires_deposit
 from apps.content.models import HomeContent, Testimonial
 from apps.orders.models import Order, OrderEvent, OrderItem
 from apps.payments.models import Payment, PaymentProviderConfig
@@ -92,6 +92,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "lead_time_text",
             "is_featured",
             "is_demo",
+            "requires_deposit",
             "category_slug",
             "images",
         )
@@ -145,10 +146,19 @@ class CartItemSerializer(serializers.ModelSerializer):
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
+    subtotal = serializers.SerializerMethodField()
+    requires_deposit = serializers.SerializerMethodField()
 
     class Meta:
         model = Cart
-        fields = ("id", "items", "updated_at")
+        fields = ("id", "items", "subtotal", "requires_deposit", "updated_at")
+
+    def get_subtotal(self, obj):
+        return sum(i.line_total for i in obj.items.all())
+
+    def get_requires_deposit(self, obj):
+        items_data = [{"product": i.product, "options": i.options} for i in obj.items.select_related("product")]
+        return order_requires_deposit(items_data)
 
 
 class QuoteCreateSerializer(serializers.ModelSerializer):
@@ -317,9 +327,23 @@ class OrderDetailSerializer(OrderSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     events = OrderEventSerializer(many=True, read_only=True)
     tax_documents = TaxDocumentSerializer(many=True, read_only=True)
+    payments = serializers.SerializerMethodField()
 
     class Meta(OrderSerializer.Meta):
-        fields = OrderSerializer.Meta.fields + ("events", "tax_documents")
+        fields = OrderSerializer.Meta.fields + ("events", "tax_documents", "payments")
+
+    def get_payments(self, obj):
+        return [
+            {
+                "id": p.id,
+                "provider": p.provider,
+                "amount": p.amount,
+                "status": p.status,
+                "payment_kind": p.payment_kind,
+                "created_at": p.created_at,
+            }
+            for p in obj.payments.all()
+        ]
 
 
 class AdminUserSerializer(serializers.ModelSerializer):

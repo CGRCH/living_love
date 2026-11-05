@@ -4,8 +4,9 @@ from django.utils import timezone
 
 def generate_order_number():
     prefix = timezone.now().strftime("%y%m")
+    base = f"LL-{prefix}-"
     last = (
-        Order.objects.filter(number__startswith=f"LL-{prefix}")
+        Order.objects.filter(number__startswith=base)
         .order_by("-number")
         .values_list("number", flat=True)
         .first()
@@ -13,10 +14,10 @@ def generate_order_number():
     seq = 1
     if last:
         try:
-            seq = int(last.split("-")[-1]) + 1
+            seq = int(last.rsplit("-", 1)[-1]) + 1
         except ValueError:
             seq = 1
-    return f"LL-{prefix}{seq:04d}"
+    return f"{base}{seq:04d}"
 
 
 class Order(models.Model):

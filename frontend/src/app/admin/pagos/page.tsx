@@ -12,13 +12,13 @@ export default function AdminPaymentsPage() {
     adminFetch("/api/admin/payment-providers/").then((r) => r.json()).then(setProviders);
   }, []);
 
-  const toggle = async (code: string, is_enabled: boolean) => {
+  const toggle = async (code: string, nextEnabled: boolean) => {
     await adminFetch("/api/admin/payment-providers/", {
       method: "PATCH",
-      body: JSON.stringify({ code, is_enabled }),
+      body: JSON.stringify({ code, is_enabled: nextEnabled }),
     });
     setProviders((prev) =>
-      prev.map((p) => (p.code === code ? { ...p, is_enabled: !is_enabled } : p)),
+      prev.map((p) => (p.code === code ? { ...p, is_enabled: nextEnabled } : p)),
     );
   };
 
@@ -34,9 +34,11 @@ export default function AdminPaymentsPage() {
             </div>
             <button
               type="button"
-              className={`h-6 w-12 ${p.is_enabled ? "bg-champ" : "bg-arena"}`}
-              onClick={() => toggle(p.code, p.is_enabled)}
-              aria-label="toggle"
+              role="switch"
+              aria-checked={p.is_enabled}
+              aria-label={`${p.display_name} ${p.is_enabled ? "activo" : "inactivo"}`}
+              className={`h-6 w-12 rounded-sm ${p.is_enabled ? "bg-champ" : "bg-arena"}`}
+              onClick={() => toggle(p.code, !p.is_enabled)}
             />
           </li>
         ))}

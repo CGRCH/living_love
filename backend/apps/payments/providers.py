@@ -70,6 +70,11 @@ class SumUpProvider(PaymentProvider):
         merchant_code = creds.get("merchant_code") or settings.SUMUP_MERCHANT_CODE
 
         if self.config.mode == "simulated" or not api_key:
+            if self.config.mode == "sandbox" and not api_key:
+                raise ValueError(
+                    "SumUp en modo sandbox requiere credenciales (SUMUP_API_KEY). "
+                    "Configure credenciales en admin o use modo simulado."
+                )
             sim = SimulatedProvider(self.config)
             sim.code = self.code
             return sim.create(payment, order, success_url=success_url, cancel_url=cancel_url)
@@ -84,13 +89,8 @@ class SumUpProvider(PaymentProvider):
             "description": f"Pedido {order.number}",
             "return_url": success_url,
         }
-        base = (
-            "https://api.sumup.com"
-            if self.config.mode == "live"
-            else "https://api.sumup.com"
-        )
         resp = requests.post(
-            f"{base}/v0.1/checkouts",
+            "https://api.sumup.com/v0.1/checkouts",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json=payload,
             timeout=30,
