@@ -1,3 +1,4 @@
+import os
 import re
 
 from datetime import timedelta
@@ -314,11 +315,21 @@ class Command(BaseCommand):
         )
 
         if not User.objects.filter(email="admin@livinglove.cl").exists():
+            admin_password = (
+                os.environ.get("ADMIN_INITIAL_PASSWORD", "").strip() or "admin12345"
+            )
             User.objects.create_superuser(
                 email="admin@livinglove.cl",
-                password="admin12345",
+                password=admin_password,
                 first_name="Cesar",
                 last_name="Admin",
             )
+            if admin_password == "admin12345":
+                self.stdout.write(
+                    self.style.WARNING(
+                        "Admin demo con contraseña por defecto (admin12345). "
+                        "En producción defina ADMIN_INITIAL_PASSWORD y cámbiela tras el primer ingreso."
+                    )
+                )
 
         self.stdout.write(self.style.SUCCESS("Seed completado (datos demo)."))

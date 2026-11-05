@@ -30,6 +30,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ("email", "password", "first_name", "last_name", "phone")
 
+    def validate_password(self, value):
+        from django.contrib.auth.password_validation import validate_password
+
+        validate_password(value)
+        return value
+
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
 

@@ -18,13 +18,15 @@ docker compose up --build
 - API: http://localhost:8000/api/docs/  
 - MailHog: http://localhost:8025  
 
-### Admin demo
+### Admin demo (solo desarrollo)
 
 Tras el seed (`seed_livinglove`, incluido en el arranque de Docker):
 
 - URL: http://localhost:3000/admin/login  
 - Email: `admin@livinglove.cl`  
-- Contraseña: `admin12345`  
+- Contraseña: la de `ADMIN_INITIAL_PASSWORD` en `.env`, o `admin12345` si no se define  
+
+**No use la contraseña demo en producción.** Defina `ADMIN_INITIAL_PASSWORD` antes del seed y cámbiela tras el primer ingreso. Ver [SECURITY.md](./SECURITY.md).
 
 ## Desarrollo local
 
@@ -76,6 +78,10 @@ Ver `.env.example`. Principales:
 | `PAYMENTS_ENCRYPTION_KEY` | Cifrado de credenciales de pasarelas en admin |
 | `SUMUP_API_KEY` / `SUMUP_MERCHANT_CODE` | SumUp sandbox/live |
 | `NEXT_PUBLIC_API_URL` | Base URL API para el frontend |
+| `PAYMENT_WEBHOOK_SECRET` | Secreto webhooks de pago (obligatorio en prod) |
+| `ADMIN_INITIAL_PASSWORD` | Contraseña inicial del admin del seed |
+
+Detalle de hardening: [SECURITY.md](./SECURITY.md).
 
 ## Cuenta cliente (JWT httpOnly)
 

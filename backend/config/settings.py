@@ -18,6 +18,7 @@ env = environ.Env(
     SUMUP_MERCHANT_CODE=(str, ""),
     PAYMENT_WEBHOOK_SECRET=(str, ""),
     PAYMENTS_ALLOW_SIMULATED_CONFIRM=(bool, False),
+    ADMIN_INITIAL_PASSWORD=(str, ""),
 )
 
 environ.Env.read_env(BASE_DIR.parent / ".env")
@@ -127,6 +128,14 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 24,
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_login": "30/hour",
+        "auth_register": "15/hour",
+        "quote_create": "40/hour",
+        "checkout": "25/hour",
+        "payment_start": "40/hour",
+        "payment_webhook": "120/minute",
+    },
 }
 
 SIMPLE_JWT = {
@@ -135,6 +144,8 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": True,
+    # Producción: SECRET_KEY ≥50 chars; cookies httpOnly en Next (/api/auth/session).
+    # Opcional: firmar JWT con clave dedicada → SIMPLE_JWT["SIGNING_KEY"] = env("JWT_SIGNING_KEY")
 }
 
 SPECTACULAR_SETTINGS = {
@@ -159,6 +170,7 @@ PAYMENT_WEBHOOK_SECRET = env("PAYMENT_WEBHOOK_SECRET")
 PAYMENTS_ALLOW_SIMULATED_CONFIRM = env.bool(
     "PAYMENTS_ALLOW_SIMULATED_CONFIRM", default=DEBUG
 )
+ADMIN_INITIAL_PASSWORD = env("ADMIN_INITIAL_PASSWORD")
 
 CUSTOM_DEPOSIT_PERCENT = 50
 
@@ -166,6 +178,12 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=False)
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "same-origin"
+    X_FRAME_OPTIONS = "DENY"
 
 LOGGING = {
     "version": 1,

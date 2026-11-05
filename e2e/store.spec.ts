@@ -65,7 +65,7 @@ test.describe("Living Love tienda", () => {
   });
 
   test("checkout simulado flujo", async ({ page, request }) => {
-    const session = "e2e-cart-session-2";
+    const session = crypto.randomUUID();
     const products = await request.get("http://localhost:8000/api/products/?category=cojines");
     const list = await products.json();
     const productId = (list.results ?? list)[0]?.id;
