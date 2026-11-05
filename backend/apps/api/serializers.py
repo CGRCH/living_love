@@ -11,6 +11,7 @@ from apps.payments.models import Payment, PaymentProviderConfig
 from apps.quotes.models import Quote
 from apps.shipping.models import Commune, Region, ShippingRate
 from apps.store_settings.models import Coupon, StoreSettings
+from apps.users.models import Address
 
 User = get_user_model()
 
@@ -251,3 +252,140 @@ class CheckoutSerializer(serializers.Serializer):
     payment_provider = serializers.CharField()
     coupon_code = serializers.CharField(required=False, allow_blank=True)
     session_key = serializers.CharField(required=False, allow_blank=True)
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    region_id = serializers.PrimaryKeyRelatedField(
+        queryset=Region.objects.all(), source="region", write_only=True
+    )
+    commune_id = serializers.PrimaryKeyRelatedField(
+        queryset=Commune.objects.all(), source="commune", write_only=True
+    )
+    region = RegionSerializer(read_only=True)
+    commune = CommuneSerializer(read_only=True)
+
+    class Meta:
+        model = Address
+        fields = (
+            "id",
+            "name",
+            "phone",
+            "street",
+            "number",
+            "apt",
+            "region",
+            "commune",
+            "region_id",
+            "commune_id",
+            "notes",
+            "is_default",
+        )
+
+
+class TaxDocumentSerializer(serializers.ModelSerializer):
+    download_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TaxDocument
+        fields = ("id", "type", "folio", "issued_at", "download_url")
+
+    def get_download_url(self, obj):
+        request = self.context.get("request")
+        if not request or not obj.pdf:
+            return None
+        return request.build_absolute_uri(
+            f"/api/me/orders/{obj.order_id}/documents/{obj.id}/download/"
+        )
+
+
+class OrderEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderEvent
+        fields = ("status", "note", "created_at")
+
+
+class OrderDetailSerializer(OrderSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    events = OrderEventSerializer(many=True, read_only=True)
+    tax_documents = TaxDocumentSerializer(many=True, read_only=True)
+
+    class Meta(OrderSerializer.Meta):
+        fields = OrderSerializer.Meta.fields + ("events", "tax_documents")
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=False, min_length=8)
+
+    class Meta:
+        model = User
+        fields = ("id", "email", "first_name", "last_name", "phone", "role", "password", "is_active")
+
+    def create(self, validated_data):
+        password = validated_data.pop("password", None)
+        role = validated_data.get("role", User.Role.STORE)
+        user = User.objects.create_user(
+            email=validated_data["email"],
+            password=password or "changeme123",
+            first_name=validated_data.get("first_name", ""),
+            last_name=validated_data.get("last_name", ""),
+            phone=validated_data.get("phone", ""),
+            role=role,
+        )
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        for k, v in validated_data.items():
+            setattr(instance, k, v)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
+
+
+class AdminProductWriteSerializer(serializers.ModelSerializer):
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), source="category"
+    )
+
+    class Meta:
+        model = Product
+        fields = (
+            "id",
+            "name",
+            "slug",
+            "description",
+            "category_id",
+            "base_price",
+            "compare_at_price",
+            "price_mode",
+            "lead_time_text",
+            "stock",
+            "is_featured",
+            "is_active",
+            "is_demo",
+            "requires_deposit",
+        )
+
+
+class AdminOptionValueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OptionValue
+        fields = (
+            "id",
+            "group",
+            "label",
+            "swatch_hex",
+            "fabric",
+            "price_delta",
+            "triggers_quote",
+            "order",
+        )
+
+
+class AdminOptionGroupSerializer(serializers.ModelSerializer):
+    values = AdminOptionValueSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = OptionGroup
+        fields = ("id", "product", "name", "type", "required", "order", "values")

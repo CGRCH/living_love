@@ -3,6 +3,7 @@ import io
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
 from django.db.models import Avg, Count, Sum
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
@@ -13,6 +14,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.api.serializers import (
+    AdminOptionGroupSerializer,
+    AdminOptionValueSerializer,
+    AdminProductWriteSerializer,
+    AdminUserSerializer,
+    OrderDetailSerializer,
     OrderSerializer,
     ProductDetailSerializer,
     QuoteSerializer,
@@ -84,9 +90,21 @@ class AdminDashboardView(APIView):
 
 class AdminOrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminRole]
-    queryset = Order.objects.prefetch_related("items", "events", "payments").order_by("-created_at")
+    queryset = Order.objects.prefetch_related("items", "events", "payments", "tax_documents").order_by(
+        "-created_at"
+    )
     serializer_class = OrderSerializer
     filterset_fields = ["status"]
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return OrderDetailSerializer
+        return OrderSerializer
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request
+        return ctx
 
     @action(detail=True, methods=["post"])
     def status(self, request, pk=None):
@@ -181,8 +199,103 @@ class AdminQuoteViewSet(viewsets.ModelViewSet):
 class AdminProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminRole]
     queryset = Product.objects.prefetch_related("images", "option_groups__values")
-    serializer_class = ProductDetailSerializer
     lookup_field = "slug"
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return AdminProductWriteSerializer
+        return ProductDetailSerializer
+
+    @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
+    def upload_image(self, request, slug=None):
+        product = self.get_object()
+        img = ProductImage.objects.create(
+            product=product,
+            image=request.FILES.get("image"),
+            alt=request.data.get("alt", product.name),
+            order=int(request.data.get("order", 0)),
+        )
+        return Response({"id": img.id, "image": img.image.url if img.image else None})
+
+    @action(detail=False, methods=["get"])
+    def export_csv(self, request):
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="productos.csv"'
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "slug",
+                "name",
+                "category_slug",
+                "base_price",
+                "compare_at_price",
+                "price_mode",
+                "is_active",
+                "is_featured",
+                "requires_deposit",
+            ]
+        )
+        for p in Product.objects.select_related("category"):
+            writer.writerow(
+                [
+                    p.slug,
+                    p.name,
+                    p.category.slug,
+                    p.base_price,
+                    p.compare_at_price or "",
+                    p.price_mode,
+                    int(p.is_active),
+                    int(p.is_featured),
+                    int(p.requires_deposit),
+                ]
+            )
+        return response
+
+    @action(detail=False, methods=["post"], parser_classes=[MultiPartParser, FormParser])
+    def import_csv(self, request):
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"detail": "Archivo requerido"}, status=400)
+        reader = csv.DictReader(io.StringIO(file.read().decode("utf-8")))
+        count = 0
+        for row in reader:
+            cat = Category.objects.filter(slug=row.get("category_slug")).first()
+            if not cat:
+                continue
+            Product.objects.update_or_create(
+                slug=row["slug"],
+                defaults={
+                    "name": row.get("name", row["slug"]),
+                    "category": cat,
+                    "base_price": int(row.get("base_price") or 0),
+                    "compare_at_price": int(row["compare_at_price"]) if row.get("compare_at_price") else None,
+                    "price_mode": row.get("price_mode", "show_price"),
+                    "is_active": bool(int(row.get("is_active", 1))),
+                    "is_featured": bool(int(row.get("is_featured", 0))),
+                    "requires_deposit": bool(int(row.get("requires_deposit", 0))),
+                },
+            )
+            count += 1
+        return Response({"imported": count})
+
+
+class AdminOptionGroupViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminRole]
+    queryset = OptionGroup.objects.prefetch_related("values")
+    serializer_class = AdminOptionGroupSerializer
+    filterset_fields = ["product"]
+
+
+class AdminOptionValueViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminRole]
+    queryset = OptionValue.objects.select_related("group")
+    serializer_class = AdminOptionValueSerializer
+
+
+class AdminUserViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminRole]
+    queryset = User.objects.order_by("-created_at")
+    serializer_class = AdminUserSerializer
 
 
 class AdminCategoryViewSet(viewsets.ModelViewSet):
@@ -287,7 +400,32 @@ class AdminShippingRatesView(APIView):
         )
         return Response({"id": rate.id})
 
-    def post_csv(self, request):
+
+class AdminShippingRatesExportView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="tarifas.csv"'
+        writer = csv.writer(response)
+        writer.writerow(["region_code", "commune", "price", "lead_days"])
+        for r in ShippingRate.objects.select_related("region", "commune"):
+            writer.writerow(
+                [
+                    r.region.code,
+                    r.commune.name if r.commune else "",
+                    r.price,
+                    r.lead_days,
+                ]
+            )
+        return response
+
+
+class AdminShippingRatesImportView(APIView):
+    permission_classes = [IsAdminRole]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
         file = request.FILES.get("file")
         if not file:
             return Response({"detail": "Archivo requerido"}, status=400)

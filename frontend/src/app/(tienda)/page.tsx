@@ -16,7 +16,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="relative min-h-[620px] bg-grafito text-blanco lg:min-h-[85vh]">
+      <section className="relative min-h-[620px] bg-grafito text-blanco lg:min-h-[90vh]">
         <div
           className="absolute inset-0 bg-cover bg-center opacity-70"
           style={{

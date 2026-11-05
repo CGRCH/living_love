@@ -1,13 +1,19 @@
-import { API_URL } from "@/lib/api";
+export function adminFetch(apiPath: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers);
+  if (init.body && typeof init.body === "string" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  return fetch(`/api/proxy?path=${encodeURIComponent(apiPath)}`, {
+    ...init,
+    headers,
+    credentials: "include",
+  });
+}
 
-export function adminFetch(path: string, options: RequestInit = {}) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("ll_admin_token") : "";
-  return fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      Authorization: token ? `Bearer ${token}` : "",
-      "Content-Type": "application/json",
-    },
+export function adminUpload(apiPath: string, formData: FormData) {
+  return fetch(`/api/proxy?path=${encodeURIComponent(apiPath)}`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
   });
 }

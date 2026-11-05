@@ -69,6 +69,29 @@ Ver `.env.example`. Principales:
 | `SUMUP_API_KEY` / `SUMUP_MERCHANT_CODE` | SumUp sandbox/live |
 | `NEXT_PUBLIC_API_URL` | Base URL API para el frontend |
 
+## Cuenta cliente (JWT httpOnly)
+
+- Registro: `/cuenta/registro` · Ingreso: `/cuenta/ingresar`
+- Las cookies `ll_access` / `ll_refresh` (httpOnly) se establecen vía `POST /api/auth/session`
+- Las llamadas autenticadas usan el proxy `GET/POST /api/proxy?path=/api/me/...` con `credentials: include`
+- Pedidos, cotizaciones, direcciones, perfil y **pago de saldo 50%** desde `/cuenta/pedidos/[id]`
+- Descarga de boleta/factura PDF vía proxy cuando el admin adjunta el documento al pedido
+
+## Panel admin (CRUD v3)
+
+Rutas principales en `/admin`:
+
+| Sección | Funciones |
+|---|---|
+| Productos | CRUD, imágenes, grupos de opciones/recargos, import/export CSV |
+| Categorías / Telas | CRUD |
+| Despachos | Tarifas región/comuna, import/export CSV |
+| Pedidos | Detalle, cambio de estado, subida PDF tributario |
+| Usuarios | Roles `store` / `admin` |
+| Pagos / Ajustes | Pasarelas, textos de devoluciones y garantía |
+
+Autenticación admin con las mismas cookies JWT (cuenta con `role=admin`).
+
 ## Pasarelas de pago
 
 Todas implementan la interfaz `PaymentProvider` (`create`, `confirm`, `refund`).
