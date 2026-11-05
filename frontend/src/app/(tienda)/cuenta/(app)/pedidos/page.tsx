@@ -27,6 +27,13 @@ export default function OrdersPage() {
           </tr>
         </thead>
         <tbody>
+          {orders.length === 0 && (
+            <tr>
+              <td colSpan={4} className="py-8 text-center text-taupe">
+                Aún no tienes pedidos. Cuando compres, aparecerán aquí.
+              </td>
+            </tr>
+          )}
           {orders.map((o) => (
             <tr key={o.id} className="border-t border-arena/30">
               <td className="py-3">{o.number}</td>

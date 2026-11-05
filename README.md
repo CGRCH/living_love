@@ -55,7 +55,15 @@ npm run dev
 python manage.py seed_livinglove
 ```
 
-Carga categorías, productos demo (`is_demo=True`), telas, comunas RM con despacho $0, cupón `BIENVENIDA`, pasarelas y usuario admin.
+Carga categorías, productos demo (`is_demo=True`), telas, comunas RM/V con despachos, cupón `BIENVENIDA`, pasarelas y usuario admin. Al inicio de cada seed se eliminan datos QA sueltos (categorías `demo-*`, productos/usuarios de prueba, pedidos con número corrupto).
+
+Para **solo limpiar** datos QA sin re-sembrar:
+
+```bash
+python manage.py seed_livinglove --reset-qa
+```
+
+Para reset completo en SQLite local: borrar `backend/db.sqlite3`, `migrate`, y volver a ejecutar `seed_livinglove`.
 
 ## Variables de entorno
 

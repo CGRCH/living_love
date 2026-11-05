@@ -84,7 +84,7 @@ test("screenshot admin suite", async ({ page, request }) => {
   await waitAdminShell(page);
   await waitForV3Styles(page, { storeHome: false });
   await expect(page.getByTestId("admin-dashboard-ready")).toBeVisible({ timeout: 15000 });
-  await expect(page.getByRole("heading", { name: /Buenos días/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Buenos días|Buenas tardes|Buenas noches/i })).toBeVisible();
   await snap(page, "admin-dashboard.png");
 
   await page.goto("/admin/pedidos");

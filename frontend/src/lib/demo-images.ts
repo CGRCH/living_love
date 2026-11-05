@@ -8,7 +8,7 @@ export const DEMO_PRODUCT_IMAGES: Record<string, string> = {
   "sofa-nube-boucle": "/demo/products/sofa-nube-boucle.jpg",
   "seccional-andes": "/demo/products/seccional-andes.jpg",
   "sofa-valparaiso": "/demo/products/sofa-valparaiso.jpg",
-  "chesterfield-oliva": "/demo/products/chesterfield-oliva.jpg",
+  "chesterfield-oliva": "/demo/products/sofa-valparaiso.jpg",
   "cojin-boucle-marfil": "/demo/products/cojin-boucle-marfil.jpg",
   "cierre-pvc-quincho": "/demo/products/cierre-pvc-quincho.jpg",
   "toldo-retractil": "/demo/products/toldo-retractil.jpg",

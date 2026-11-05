@@ -40,11 +40,39 @@ test.describe("Living Love tienda", () => {
     await page.screenshot({ path: "test-results/artifact-cart-checkout-summary.png", fullPage: true });
   });
 
+  test("404 producto en español y status HTTP", async ({ page }) => {
+    const res = await page.goto("/producto/no-existe-xyz");
+    expect(res?.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: /página no encontrada/i })).toBeVisible();
+    await page.screenshot({ path: "test-results/artifact-404-product.png", fullPage: true });
+  });
+
+  test("carro cantidad y cupón en checkout", async ({ page }) => {
+    await page.goto("/producto/sofa-nube-boucle");
+    await waitForV3Styles(page, { storeHome: false });
+    await page.getByRole("button", { name: /agregar al carro/i }).click();
+    await page.waitForURL("**/carro");
+    await page.getByRole("combobox").selectOption("2");
+    await expect(page.getByRole("button", { name: /eliminar/i })).toBeVisible();
+    await page.goto("/checkout");
+    await page.getByPlaceholder("BIENVENIDA").fill("NOEXISTE");
+    await page.getByRole("button", { name: /^Aplicar$/i }).click();
+    await expect(page.getByText(/no válido/i)).toBeVisible();
+    await page.getByPlaceholder("BIENVENIDA").fill("BIENVENIDA");
+    await page.getByRole("button", { name: /^Aplicar$/i }).click();
+    await expect(page.getByText(/Descuento aplicado/i)).toBeVisible({ timeout: 10000 });
+    await page.screenshot({ path: "test-results/artifact-checkout-coupon.png", fullPage: true });
+  });
+
   test("checkout simulado flujo", async ({ page, request }) => {
     const session = "e2e-cart-session-2";
+    const products = await request.get("http://localhost:8000/api/products/?category=cojines");
+    const list = await products.json();
+    const productId = (list.results ?? list)[0]?.id;
+    expect(productId).toBeTruthy();
     await request.post("http://localhost:8000/api/cart/items/", {
       headers: { "X-Cart-Session": session },
-      data: { product_id: 1, options: {}, qty: 1 },
+      data: { product_id: productId, options: {}, qty: 1 },
     });
     const checkout = await request.post("http://localhost:8000/api/checkout/", {
       headers: { "X-Cart-Session": session, "Content-Type": "application/json" },
@@ -66,6 +94,7 @@ test.describe("Living Love tienda", () => {
     await page.goto(redirect.replace("http://localhost:3000", ""));
     await page.getByRole("button", { name: /aprobar/i }).click();
     await expect(page.getByText(/procesado/i)).toBeVisible();
+    await expect(page.getByText(/Pedido LL-/)).toBeVisible();
     await page.screenshot({ path: "test-results/artifact-checkout.png", fullPage: true });
   });
 

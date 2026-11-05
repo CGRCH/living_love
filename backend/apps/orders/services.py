@@ -5,26 +5,43 @@ from apps.payments.models import Payment
 from apps.store_settings.models import Coupon
 
 
-def apply_coupon(code: str, subtotal: int) -> int:
-    if not code:
-        return 0
-    coupon = Coupon.objects.filter(code__iexact=code, is_active=True).first()
-    if not coupon:
-        return 0
-    now = timezone.now()
-    if coupon.valid_from > now or coupon.valid_to < now:
-        return 0
-    if coupon.max_uses and coupon.used >= coupon.max_uses:
-        return 0
-    if coupon.min_total and subtotal < coupon.min_total:
-        return 0
+def _coupon_discount(coupon: Coupon, subtotal: int) -> int:
     if coupon.type == Coupon.CouponType.PERCENT:
         discount = int(subtotal * coupon.value / 100)
     else:
         discount = coupon.value
+    return min(discount, subtotal)
+
+
+def preview_coupon(code: str, subtotal: int) -> tuple[int, str | None]:
+    """Validates coupon without incrementing usage."""
+    if not code or not str(code).strip():
+        return 0, "Ingresa un código de cupón."
+    coupon = Coupon.objects.filter(code__iexact=code.strip(), is_active=True).first()
+    if not coupon:
+        return 0, "Cupón no válido."
+    now = timezone.now()
+    if coupon.valid_from > now or coupon.valid_to < now:
+        return 0, "Este cupón ya no está vigente."
+    if coupon.max_uses and coupon.used >= coupon.max_uses:
+        return 0, "Este cupón alcanzó el límite de usos."
+    if coupon.min_total and subtotal < coupon.min_total:
+        return 0, f"Monto mínimo {coupon.min_total:,} CLP.".replace(",", ".")
+    return _coupon_discount(coupon, subtotal), None
+
+
+def apply_coupon(code: str, subtotal: int) -> int:
+    if not code:
+        return 0
+    discount, err = preview_coupon(code, subtotal)
+    if err:
+        return 0
+    coupon = Coupon.objects.filter(code__iexact=code.strip(), is_active=True).first()
+    if not coupon:
+        return 0
     coupon.used += 1
     coupon.save(update_fields=["used"])
-    return min(discount, subtotal)
+    return discount
 
 
 def finalize_payment(payment: Payment, status_result: str, raw: dict):
@@ -55,8 +72,8 @@ def finalize_payment(payment: Payment, status_result: str, raw: dict):
 
 
 def send_order_email(order: Order):
-    from django.core.mail import send_mail
     from django.conf import settings
+    from django.core.mail import EmailMessage, get_connection
 
     subject = f"Pedido {order.number} — Living Love"
     body = (
@@ -64,4 +81,12 @@ def send_order_email(order: Order):
         f"Total: ${order.total:,}\nEstado: {order.get_status_display()}\n\n"
         f"Gracias por confiar en Living Love."
     ).replace(",", ".")
-    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [order.email], fail_silently=True)
+    timeout = getattr(settings, "EMAIL_TIMEOUT", 10)
+    connection = get_connection(fail_silently=True, timeout=timeout)
+    EmailMessage(
+        subject,
+        body,
+        settings.DEFAULT_FROM_EMAIL,
+        [order.email],
+        connection=connection,
+    ).send()

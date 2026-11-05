@@ -18,10 +18,51 @@ const links = [
   ["ajustes", "Ajustes"],
 ];
 
+function NavLinks({
+  pathname,
+  onNavigate,
+  className,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+  className?: string;
+}) {
+  return (
+    <nav className={`space-y-3 text-sm ${className ?? ""}`}>
+      {links.map(([href, label]) => {
+        const path = href ? `/admin/${href}` : "/admin";
+        const active = pathname === path || pathname.startsWith(`${path}/`);
+        return (
+          <Link
+            key={href}
+            href={path}
+            onClick={onNavigate}
+            className={`block py-1 ${active ? "text-champ" : "text-arena hover:text-blanco"}`}
+          >
+            {label}
+          </Link>
+        );
+      })}
+      <button
+        type="button"
+        className="mt-8 text-arena"
+        onClick={async () => {
+          await logout();
+          onNavigate?.();
+          window.location.href = "/admin/login";
+        }}
+      >
+        Salir
+      </button>
+    </nav>
+  );
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [authState, setAuthState] = useState<"loading" | "ok" | "denied">("loading");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (pathname.endsWith("/login")) {
@@ -51,7 +92,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [pathname, router]);
 
   if (pathname.endsWith("/login")) {
-    return <div className="min-h-screen bg-marfil">{children}</div>;
+    return <div className="min-h-screen overflow-x-hidden bg-marfil">{children}</div>;
   }
 
   if (authState === "loading") {
@@ -71,37 +112,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-marfil" data-admin-shell="ready">
+    <div className="flex min-h-screen overflow-x-hidden bg-marfil" data-admin-shell="ready">
       <aside className="hidden w-64 shrink-0 bg-onix p-6 text-blanco md:block">
         <p className="font-serif text-xl">LIVING LOVE</p>
         <p className="text-[10px] uppercase tracking-label text-champ">Panel administración</p>
-        <nav className="mt-10 space-y-3 text-sm">
-          {links.map(([href, label]) => {
-            const path = href ? `/admin/${href}` : "/admin";
-            const active = pathname === path || pathname.startsWith(`${path}/`);
-            return (
-              <Link
-                key={href}
-                href={path}
-                className={`block ${active ? "text-champ" : "text-arena hover:text-blanco"}`}
-              >
-                {label}
-              </Link>
-            );
-          })}
+        <div className="mt-10">
+          <NavLinks pathname={pathname} />
+        </div>
+      </aside>
+      <div className="min-w-0 flex-1">
+        <header className="flex items-center justify-between border-b border-arena/40 bg-marfil p-4 md:hidden">
+          <p className="font-serif text-lg">Admin</p>
           <button
             type="button"
-            className="mt-8 text-arena"
-            onClick={async () => {
-              await logout();
-              router.push("/admin/login");
-            }}
+            className="min-h-10 min-w-10 border border-arena px-3 text-sm"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((o) => !o)}
           >
-            Salir
+            Menú
           </button>
-        </nav>
-      </aside>
-      <div className="flex-1 p-4 md:p-8">{children}</div>
+        </header>
+        {menuOpen && (
+          <div className="border-b border-arena/40 bg-onix p-4 text-blanco md:hidden">
+            <NavLinks
+              pathname={pathname}
+              onNavigate={() => {
+                setMenuOpen(false);
+                router.push(pathname);
+              }}
+            />
+          </div>
+        )}
+        <div className="max-w-full p-4 md:p-8">{children}</div>
+      </div>
     </div>
   );
 }

@@ -149,6 +149,7 @@ EMAIL_BACKEND = env(
 )
 EMAIL_HOST = env("EMAIL_HOST", default="localhost")
 EMAIL_PORT = env.int("EMAIL_PORT", default=1025)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="tienda@livinglove.cl")
 
 PAYMENTS_ENCRYPTION_KEY = env("PAYMENTS_ENCRYPTION_KEY") or SECRET_KEY[:32].ljust(32, "x")

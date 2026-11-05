@@ -171,6 +171,44 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
         payment.save()
         return Response({"redirect_url": result.redirect_url, "payment_id": payment.id})
 
+    @action(detail=False, methods=["get"])
+    def export_csv(self, request):
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="pedidos.csv"'
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "number",
+                "email",
+                "phone",
+                "status",
+                "subtotal",
+                "discount",
+                "shipping_cost",
+                "total",
+                "deposit_amount",
+                "balance_due",
+                "created_at",
+            ]
+        )
+        for o in Order.objects.order_by("-created_at")[:5000]:
+            writer.writerow(
+                [
+                    o.number,
+                    o.email,
+                    o.phone,
+                    o.status,
+                    o.subtotal,
+                    o.discount,
+                    o.shipping_cost,
+                    o.total,
+                    o.deposit_amount,
+                    o.balance_due,
+                    o.created_at.isoformat(),
+                ]
+            )
+        return response
+
 
 class AdminQuoteViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminRole]

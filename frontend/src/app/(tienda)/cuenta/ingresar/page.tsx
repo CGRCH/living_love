@@ -26,20 +26,26 @@ export default function LoginPage() {
     <div className="mx-auto max-w-md px-4 py-20">
       <h1 className="font-serif text-4xl">Ingresar</h1>
       <form onSubmit={submit} className="mt-8 space-y-4">
-        <input
-          type="email"
-          className="w-full border border-arena px-3 py-2"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          className="w-full border border-arena px-3 py-2"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <label className="block text-xs uppercase tracking-label text-taupe">
+          Email
+          <input
+            type="email"
+            autoComplete="email"
+            className="mt-1 w-full border border-arena px-3 py-2 text-sm normal-case"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </label>
+        <label className="block text-xs uppercase tracking-label text-taupe">
+          Contraseña
+          <input
+            type="password"
+            autoComplete="current-password"
+            className="mt-1 w-full border border-arena px-3 py-2 text-sm normal-case"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </label>
         {error && <p className="text-sm text-red-700">{error}</p>}
         <Button type="submit" full>
           Ingresar

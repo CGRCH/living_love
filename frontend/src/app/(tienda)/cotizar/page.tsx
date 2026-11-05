@@ -25,12 +25,13 @@ export default function QuotePage() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      const msg =
-        data.detail ||
-        Object.values(data)
-          .flat()
-          .join(" ") ||
-        "No se pudo enviar la cotización.";
+      let msg = "No pudimos enviar tu cotización. Revisa los datos e inténtalo de nuevo.";
+      if (typeof data.detail === "string" && data.detail !== "error") {
+        msg = data.detail;
+      } else if (data && typeof data === "object") {
+        const parts = Object.values(data).flat().filter(Boolean);
+        if (parts.length) msg = parts.join(" ");
+      }
       setError(msg);
       return;
     }

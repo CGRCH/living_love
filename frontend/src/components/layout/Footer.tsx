@@ -33,22 +33,18 @@ export function Footer({ settings }: { settings: Partial<PublicSettings> }) {
           <p className="text-[10px] uppercase tracking-label text-champ">Ayuda</p>
           <ul className="mt-4 space-y-2 text-sm text-arena">
             <li>
-              <Link href="/politicas/devoluciones">Despacho</Link>
+              <Link href="/politicas/devoluciones">Política de devoluciones</Link>
             </li>
             <li>
-              <Link href="/politicas/devoluciones">Pagos</Link>
-            </li>
-            <li>
-              <Link href="/politicas/devoluciones">Garantía</Link>
-            </li>
-            <li>
-              <Link href="/politicas/devoluciones">FAQ</Link>
+              <Link href="/cotizar">Cotizar a medida</Link>
             </li>
           </ul>
         </div>
         <div>
-          <p className="text-[10px] uppercase tracking-label text-champ">Newsletter</p>
-          <p className="mt-4 text-sm text-arena">Suscríbete a novedades de telas y colecciones.</p>
+          <p className="text-[10px] uppercase tracking-label text-champ">Contacto</p>
+          <p className="mt-4 text-sm text-arena">
+            Escríbenos por WhatsApp para novedades de telas y colecciones.
+          </p>
         </div>
       </div>
       <div className="border-t border-grafito py-4 text-center text-xs text-taupe">

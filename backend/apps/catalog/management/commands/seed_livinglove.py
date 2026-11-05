@@ -1,3 +1,5 @@
+import re
+
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -47,7 +49,35 @@ DEMO_PRODUCTS = [
 class Command(BaseCommand):
     help = "Carga datos demo Living Love (marcados is_demo=True)"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--reset-qa",
+            action="store_true",
+            help="Elimina datos de prueba QA (categorías demo-*, productos QA, pedidos corruptos, usuarios qa@…)",
+        )
+
+    def cleanup_qa_pollution(self):
+        valid_number = re.compile(r"^LL-\d{4}-\d{4}$")
+        for order in Order.objects.all().iterator():
+            if order.number.startswith("LL-DEMO-"):
+                continue
+            if not valid_number.match(order.number):
+                order.delete()
+        Category.objects.filter(slug__startswith="demo-").delete()
+        Product.objects.filter(name__icontains=" QA").delete()
+        Product.objects.filter(slug__regex=r".*-qa$").delete()
+        Fabric.objects.filter(name__icontains="Tela QA").delete()
+        User.objects.filter(email__endswith="@livinglove.test").exclude(
+            email="admin@livinglove.cl"
+        ).delete()
+        User.objects.filter(email__startswith="qa@").delete()
+        self.stdout.write("Datos QA eliminados.")
+
     def handle(self, *args, **options):
+        if options.get("reset_qa"):
+            self.cleanup_qa_pollution()
+            return
+        self.cleanup_qa_pollution()
         self.stdout.write("Sembrando Living Love…")
         store = StoreSettings.load()
         store.announcement_text = (

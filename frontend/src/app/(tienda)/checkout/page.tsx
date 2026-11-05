@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/Button";
 
 type CartLine = {
   id: number;
-  product: { name: string; slug: string; requires_deposit?: boolean };
+  product: { name: string; slug: string; requires_deposit?: boolean; images?: { image: string }[] };
   qty: number;
   line_total: number;
+  options_summary?: string[];
 };
 
 type CartPayload = {
@@ -42,11 +43,16 @@ export default function CheckoutPage() {
     coupon_code: "",
     shipping_method: "delivery",
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponMessage, setCouponMessage] = useState("");
+  const [couponValid, setCouponValid] = useState<boolean | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
 
-  useEffect(() => {
-    fetchPublicSettings().then(setSettings);
+  const reloadCart = () => {
     const session = localStorage.getItem("ll_cart_session") || "";
-    fetch(`${API_URL}/api/cart/`, { headers: { "X-Cart-Session": session } })
+    return fetch(`${API_URL}/api/cart/`, { headers: { "X-Cart-Session": session } })
       .then((r) => r.json())
       .then((data) => {
         setCart({
@@ -58,6 +64,11 @@ export default function CheckoutPage() {
           localStorage.setItem("ll_cart_session", data.session_key);
         }
       });
+  };
+
+  useEffect(() => {
+    fetchPublicSettings().then(setSettings);
+    reloadCart();
     fetchRegions().then((r) => {
       setRegions(r.results ?? r);
       const rm = (r.results ?? r).find((x: { code: string }) => x.code === "RM");
@@ -81,19 +92,62 @@ export default function CheckoutPage() {
     const subtotal = cart?.subtotal ?? 0;
     const ship =
       form.shipping_method === "delivery" && !shipping.pending_coordination ? shipping.price : 0;
-    const total = subtotal + ship;
+    const total = Math.max(subtotal - couponDiscount + ship, 0);
     const requiresDeposit = cart?.requires_deposit ?? false;
-    const amountDueNow = requiresDeposit
-      ? Math.round((total * DEPOSIT_PERCENT) / 100)
-      : total;
+    const amountDueNow = requiresDeposit ? Math.round((total * DEPOSIT_PERCENT) / 100) : total;
     const balanceDue = requiresDeposit ? total - amountDueNow : 0;
-    return { subtotal, ship, total, amountDueNow, balanceDue, requiresDeposit };
-  }, [cart, form.shipping_method, shipping]);
+    return { subtotal, ship, total, amountDueNow, balanceDue, requiresDeposit, discount: couponDiscount };
+  }, [cart, form.shipping_method, shipping, couponDiscount]);
+
+  const applyCoupon = async () => {
+    setApplyingCoupon(true);
+    setCouponMessage("");
+    const session = localStorage.getItem("ll_cart_session") || "";
+    const res = await fetch(`${API_URL}/api/cart/apply-coupon/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Cart-Session": session },
+      body: JSON.stringify({ coupon_code: form.coupon_code.trim() }),
+    });
+    const data = await res.json();
+    setApplyingCoupon(false);
+    if (data.valid) {
+      setCouponDiscount(data.discount);
+      setCouponValid(true);
+      setCouponMessage(data.message || "Cupón aplicado.");
+    } else {
+      setCouponDiscount(0);
+      setCouponValid(false);
+      setCouponMessage(data.message || "Cupón no válido.");
+    }
+  };
+
+  const validateClient = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!form.name.trim()) errs.name = "Ingresa tu nombre.";
+    if (!form.phone.trim()) errs.phone = "Ingresa tu teléfono.";
+    if (!form.email.trim()) errs.email = "Ingresa tu email.";
+    if (!form.street.trim()) errs.street = "Ingresa la dirección.";
+    if (!form.commune_id) errs.commune_id = "Selecciona una comuna.";
+    if (form.doc_type === "factura") {
+      if (!form.rut.trim()) errs.rut = "Ingresa el RUT.";
+      if (!form.razon_social.trim()) errs.razon_social = "Ingresa la razón social.";
+      if (!form.giro.trim()) errs.giro = "Ingresa el giro.";
+    }
+    setFieldErrors(errs);
+    if (Object.keys(errs).length) {
+      setFormError("Revisa los campos marcados.");
+      return false;
+    }
+    setFormError("");
+    return true;
+  };
 
   const submit = async () => {
+    if (!validateClient()) return;
     const session = localStorage.getItem("ll_cart_session") || "";
     const body: Record<string, unknown> = {
       ...form,
+      coupon_code: form.coupon_code.trim(),
       region_id: form.region_id ? Number(form.region_id) : undefined,
       commune_id: form.commune_id ? Number(form.commune_id) : undefined,
       session_key: session,
@@ -116,13 +170,17 @@ export default function CheckoutPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      const msg =
-        data.detail ||
-        Object.entries(data)
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
-          .join("\n") ||
-        "Error en checkout";
-      alert(msg);
+      const errs: Record<string, string> = {};
+      if (typeof data.detail === "string") {
+        setFormError(data.detail);
+      } else {
+        Object.entries(data).forEach(([k, v]) => {
+          const msg = Array.isArray(v) ? v.join(" ") : String(v);
+          errs[k] = msg;
+        });
+        setFieldErrors(errs);
+        setFormError("Revisa los datos del formulario.");
+      }
       return;
     }
     window.location.href = data.payment_redirect;
@@ -161,24 +219,37 @@ export default function CheckoutPage() {
         ))}
       </nav>
       <h1 className="font-serif text-4xl">Finalizar compra</h1>
+      {formError && (
+        <p className="mt-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+          {formError}
+        </p>
+      )}
       <div className="mt-10 grid gap-12 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-10">
           <section>
             <p className="text-[10px] uppercase tracking-label">Datos de despacho</p>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {[
-                ["name", "Nombre"],
-                ["phone", "Teléfono"],
-                ["email", "Email"],
-                ["street", "Dirección"],
-              ].map(([key, label]) => (
+              {(
+                [
+                  ["name", "Nombre"],
+                  ["phone", "Teléfono"],
+                  ["email", "Email"],
+                  ["street", "Dirección"],
+                ] as const
+              ).map(([key, label]) => (
                 <label key={key} className="text-xs uppercase tracking-label text-taupe">
                   {label}
                   <input
-                    className="mt-1 w-full border border-arena px-3 py-2 text-sm normal-case"
-                    value={(form as Record<string, string>)[key]}
-                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                    className={`mt-1 w-full border px-3 py-2 text-sm normal-case ${fieldErrors[key] ? "border-red-500" : "border-arena"}`}
+                    value={form[key]}
+                    onChange={(e) => {
+                      setForm({ ...form, [key]: e.target.value });
+                      setFieldErrors((fe) => ({ ...fe, [key]: "" }));
+                    }}
                   />
+                  {fieldErrors[key] && (
+                    <span className="mt-1 block text-[11px] normal-case text-red-700">{fieldErrors[key]}</span>
+                  )}
                 </label>
               ))}
               <label className="text-xs uppercase tracking-label text-taupe">
@@ -203,9 +274,12 @@ export default function CheckoutPage() {
               <label className="text-xs uppercase tracking-label text-taupe">
                 Comuna
                 <select
-                  className="mt-1 w-full border border-arena px-3 py-2 text-sm"
+                  className={`mt-1 w-full border px-3 py-2 text-sm ${fieldErrors.commune_id ? "border-red-500" : "border-arena"}`}
                   value={form.commune_id}
-                  onChange={(e) => setForm({ ...form, commune_id: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, commune_id: e.target.value });
+                    setFieldErrors((fe) => ({ ...fe, commune_id: "" }));
+                  }}
                 >
                   <option value="">Seleccionar</option>
                   {communes.map((c) => (
@@ -214,6 +288,9 @@ export default function CheckoutPage() {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.commune_id && (
+                  <span className="mt-1 block text-[11px] normal-case text-red-700">{fieldErrors.commune_id}</span>
+                )}
               </label>
             </div>
             <div className="mt-4 flex gap-4">
@@ -257,18 +334,23 @@ export default function CheckoutPage() {
               </div>
               {form.doc_type === "factura" && (
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {[
-                    ["rut", "RUT"],
-                    ["razon_social", "Razón social"],
-                    ["giro", "Giro"],
-                  ].map(([key, label]) => (
+                  {(
+                    [
+                      ["rut", "RUT"],
+                      ["razon_social", "Razón social"],
+                      ["giro", "Giro"],
+                    ] as const
+                  ).map(([key, label]) => (
                     <label key={key} className="text-xs uppercase tracking-label text-taupe">
                       {label}
                       <input
-                        className="mt-1 w-full border border-arena px-3 py-2 text-sm normal-case"
-                        value={(form as Record<string, string>)[key]}
+                        className={`mt-1 w-full border px-3 py-2 text-sm normal-case ${fieldErrors[key] ? "border-red-500" : "border-arena"}`}
+                        value={form[key]}
                         onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                       />
+                      {fieldErrors[key] && (
+                        <span className="mt-1 block text-[11px] normal-case text-red-700">{fieldErrors[key]}</span>
+                      )}
                     </label>
                   ))}
                 </div>
@@ -303,6 +385,9 @@ export default function CheckoutPage() {
               <li key={item.id} className="flex justify-between gap-4">
                 <span>
                   {item.product.name} × {item.qty}
+                  {item.options_summary?.length ? (
+                    <span className="mt-1 block text-xs text-taupe">{item.options_summary.join(" · ")}</span>
+                  ) : null}
                 </span>
                 <span>{formatCLP(item.line_total)}</span>
               </li>
@@ -316,6 +401,12 @@ export default function CheckoutPage() {
               <dt>Subtotal</dt>
               <dd>{formatCLP(totals.subtotal)}</dd>
             </div>
+            {totals.discount > 0 && (
+              <div className="flex justify-between text-champ">
+                <dt>Descuento</dt>
+                <dd>−{formatCLP(totals.discount)}</dd>
+              </div>
+            )}
             <div className="flex justify-between">
               <dt>Despacho</dt>
               <dd>{totals.ship ? formatCLP(totals.ship) : "Gratis"}</dd>
@@ -337,15 +428,34 @@ export default function CheckoutPage() {
               </>
             )}
           </dl>
-          <label className="mt-4 block text-xs text-taupe">
-            Cupón
-            <input
-              className="mt-1 w-full border border-arena px-3 py-2 text-sm"
-              value={form.coupon_code}
-              onChange={(e) => setForm({ ...form, coupon_code: e.target.value })}
-              placeholder="BIENVENIDA"
-            />
-          </label>
+          <div className="mt-4">
+            <label className="block text-xs text-taupe">
+              Cupón
+              <div className="mt-1 flex gap-2">
+                <input
+                  className="min-w-0 flex-1 border border-arena px-3 py-2 text-sm"
+                  value={form.coupon_code}
+                  onChange={(e) => {
+                    setForm({ ...form, coupon_code: e.target.value });
+                    setCouponValid(null);
+                    setCouponMessage("");
+                  }}
+                  placeholder="BIENVENIDA"
+                />
+                <Button type="button" variant="outline" onClick={applyCoupon} disabled={applyingCoupon}>
+                  Aplicar
+                </Button>
+              </div>
+            </label>
+            {couponMessage && (
+              <p
+                className={`mt-2 text-xs ${couponValid ? "text-green-800" : "text-red-700"}`}
+                role="status"
+              >
+                {couponMessage}
+              </p>
+            )}
+          </div>
           <Button full className="mt-8" onClick={submit} disabled={!cart?.items?.length}>
             Pagar {formatCLP(totals.amountDueNow)}
           </Button>

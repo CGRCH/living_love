@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { adminFetch } from "@/lib/admin-api";
+import { adminFetch, adminDownload } from "@/lib/admin-api";
 import { formatCLP } from "@/lib/api";
 import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
 
@@ -14,8 +14,17 @@ export default function AdminOrdersPage() {
   }, []);
 
   return (
-    <div>
-      <h1 className="font-serif text-3xl">Pedidos</h1>
+    <div className="max-w-full overflow-x-auto">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-serif text-3xl">Pedidos</h1>
+        <button
+          type="button"
+          className="border border-arena bg-blanco px-4 py-2 text-xs uppercase"
+          onClick={() => adminDownload("/api/admin/orders/export_csv/", "pedidos.csv")}
+        >
+          Exportar CSV
+        </button>
+      </div>
       <table className="mt-8 w-full bg-blanco text-sm">
         <thead className="text-[10px] uppercase tracking-label text-taupe">
           <tr>

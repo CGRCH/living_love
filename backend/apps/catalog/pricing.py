@@ -47,6 +47,25 @@ def _options_trigger_custom(product: Product, options: dict) -> bool:
     return False
 
 
+def summarize_options(product: Product, options: dict) -> list[str]:
+    lines: list[str] = []
+    if not options:
+        return lines
+    for group in product.option_groups.prefetch_related("values"):
+        selected = options.get(str(group.id)) or options.get(group.name)
+        if selected is None:
+            continue
+        ids = selected if isinstance(selected, list) else [selected]
+        labels = []
+        for val_id in ids:
+            val = group.values.filter(id=val_id).first()
+            if val:
+                labels.append(val.label)
+        if labels:
+            lines.append(f"{group.name}: {', '.join(labels)}")
+    return lines
+
+
 def compute_deposit_amounts(total: int, requires_deposit: bool) -> tuple[int, int, int]:
     if not requires_deposit:
         return total, 0, total

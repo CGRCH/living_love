@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { greetingName } from "@/lib/labels";
+import { getSession } from "@/lib/auth-client";
 import { adminFetch } from "@/lib/admin-api";
 import { formatCLP } from "@/lib/api";
 import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
@@ -17,9 +19,11 @@ type Dashboard = {
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
+  const [adminName, setAdminName] = useState("");
 
   useEffect(() => {
     adminFetch("/api/admin/dashboard/").then((r) => r.json()).then(setData);
+    getSession().then((s) => setAdminName(s?.user?.first_name || ""));
   }, []);
 
   if (!data) return <p>Cargando panel…</p>;
@@ -32,7 +36,7 @@ export default function AdminDashboardPage() {
       <p className="text-[10px] uppercase tracking-label text-taupe">
         {new Date().toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" })}
       </p>
-      <h1 className="font-serif text-4xl">Buenos días, Cesar</h1>
+      <h1 className="font-serif text-4xl">{greetingName(adminName)}</h1>
       <div className="mt-10 grid gap-4 md:grid-cols-4">
         {[
           ["Ventas del mes", formatCLP(data.sales_month)],

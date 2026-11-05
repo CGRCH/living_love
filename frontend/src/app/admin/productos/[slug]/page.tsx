@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { adminFetch, adminUpload } from "@/lib/admin-api";
 import { Button } from "@/components/ui/Button";
+import { priceModeLabel } from "@/lib/labels";
 
 export default function AdminProductEditPage({ params }: { params: { slug: string } }) {
   const [product, setProduct] = useState<Record<string, unknown> | null>(null);
@@ -43,7 +44,7 @@ export default function AdminProductEditPage({ params }: { params: { slug: strin
     <div className="max-w-3xl">
       <h1 className="font-serif text-3xl">{product.name as string}</h1>
       <div className="mt-6 space-y-3 bg-blanco p-4">
-        {["name", "slug", "base_price", "price_mode", "lead_time_text"].map((field) => (
+        {["name", "slug", "base_price", "lead_time_text"].map((field) => (
           <label key={field} className="block text-xs uppercase tracking-label text-taupe">
             {FIELD_LABELS[field] ?? field}
             <input
@@ -53,6 +54,17 @@ export default function AdminProductEditPage({ params }: { params: { slug: strin
             />
           </label>
         ))}
+        <label className="block text-xs uppercase tracking-label text-taupe">
+          {FIELD_LABELS.price_mode}
+          <select
+            className="mt-1 w-full border border-arena px-2 py-2 text-sm normal-case"
+            value={String(product.price_mode ?? "show_price")}
+            onChange={(e) => setProduct({ ...product, price_mode: e.target.value })}
+          >
+            <option value="show_price">{priceModeLabel("show_price")}</option>
+            <option value="quote_only">{priceModeLabel("quote_only")}</option>
+          </select>
+        </label>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

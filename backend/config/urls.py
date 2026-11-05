@@ -37,6 +37,7 @@ from apps.api.views_account import (
     TaxDocumentDownloadView,
 )
 from apps.api.views_store import (
+    CartCouponPreviewView,
     CartItemView,
     CartView,
     CategoryListView,
@@ -93,6 +94,7 @@ urlpatterns = [
     path("api/products/<slug:slug>/", ProductDetailView.as_view()),
     path("api/fabrics/", FabricListView.as_view()),
     path("api/cart/", CartView.as_view()),
+    path("api/cart/apply-coupon/", CartCouponPreviewView.as_view()),
     path("api/cart/items/", CartItemView.as_view()),
     path("api/cart/items/<int:item_id>/", CartItemView.as_view()),
     path("api/shipping/quote/", ShippingQuoteView.as_view()),

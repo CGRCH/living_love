@@ -36,7 +36,7 @@ from apps.catalog.pricing import calculate_unit_price, compute_deposit_amounts, 
 from apps.common.rut import validate_rut
 from apps.content.models import HomeContent, Testimonial
 from apps.orders.models import Order, OrderEvent, OrderItem
-from apps.orders.services import apply_coupon, finalize_payment, send_order_email
+from apps.orders.services import apply_coupon, finalize_payment, preview_coupon, send_order_email
 from apps.payments.models import Payment, PaymentProviderConfig
 from apps.payments.providers import get_provider
 from apps.payments.webhook_auth import resolve_payment_from_payload, verify_payment_webhook
@@ -161,6 +161,23 @@ class CartView(APIView):
         cart = get_or_create_cart(request)
         cart.items.all().delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CartCouponPreviewView(APIView):
+    def post(self, request):
+        cart = get_or_create_cart(request)
+        subtotal = sum(i.line_total for i in cart.items.select_related("product"))
+        code = (request.data.get("coupon_code") or "").strip()
+        discount, err = preview_coupon(code, subtotal)
+        if err:
+            return Response({"valid": False, "discount": 0, "message": err})
+        return Response(
+            {
+                "valid": True,
+                "discount": discount,
+                "message": f"Descuento aplicado: ${discount:,}".replace(",", "."),
+            }
+        )
 
 
 class CartItemView(APIView):

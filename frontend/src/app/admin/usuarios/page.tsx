@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminFetch } from "@/lib/admin-api";
+import { userRoleLabel } from "@/lib/labels";
 import { Button } from "@/components/ui/Button";
 
 export default function AdminUsersPage() {
@@ -44,7 +45,7 @@ export default function AdminUsersPage() {
           {users.map((u) => (
             <tr key={u.id} className="border-t border-arena/30">
               <td className="p-2">{u.email}</td>
-              <td className="uppercase">{u.role}</td>
+              <td>{userRoleLabel(u.role)}</td>
             </tr>
           ))}
         </tbody>

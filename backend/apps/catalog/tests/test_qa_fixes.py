@@ -1,4 +1,5 @@
 import pytest
+from datetime import timedelta
 from django.test import override_settings
 from rest_framework.test import APIClient
 
@@ -135,6 +136,62 @@ def test_cors_allows_cart_session_header(client):
     assert res.status_code == 200
     allow = res.get("Access-Control-Allow-Headers", "")
     assert "x-cart-session" in allow.lower()
+
+
+@pytest.mark.django_db
+def test_coupon_preview_valid(client):
+    from apps.store_settings.models import Coupon
+    from django.utils import timezone
+
+    now = timezone.now()
+    Coupon.objects.create(
+        code="TEST10",
+        type="fixed",
+        value=5000,
+        min_total=1000,
+        valid_from=now,
+        valid_to=now + timedelta(days=1),
+        is_active=True,
+    )
+    from apps.catalog.models import Category
+
+    cat = Category.objects.create(name="Cup", slug="cup-cat", is_active=True)
+    product = Product.objects.create(
+        name="Cup Prod",
+        slug="cup-prod",
+        category=cat,
+        base_price=5000,
+        is_active=True,
+    )
+    session = "coupon-preview-session"
+    client.post(
+        "/api/cart/items/",
+        {"product_id": product.id, "qty": 2, "options": {}},
+        content_type="application/json",
+        HTTP_X_CART_SESSION=session,
+    )
+    res = client.post(
+        "/api/cart/apply-coupon/",
+        {"coupon_code": "TEST10"},
+        content_type="application/json",
+        HTTP_X_CART_SESSION=session,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["valid"] is True
+    assert data["discount"] == 5000
+
+
+@pytest.mark.django_db
+def test_coupon_preview_invalid(client):
+    res = client.post(
+        "/api/cart/apply-coupon/",
+        {"coupon_code": "NOEXISTE"},
+        content_type="application/json",
+        HTTP_X_CART_SESSION="no-coupon",
+    )
+    assert res.status_code == 200
+    assert res.json()["valid"] is False
 
 
 @pytest.mark.django_db

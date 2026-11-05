@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { authFetch, getSession, logout } from "@/lib/auth-client";
-import { formatCLP } from "@/lib/api";
+import { getSession, logout } from "@/lib/auth-client";
 
 type User = { email: string; first_name: string; last_name: string; role: string };
 
@@ -50,5 +49,3 @@ export default function AccountAppLayout({ children }: { children: React.ReactNo
     </div>
   );
 }
-
-export { authFetch, formatCLP };

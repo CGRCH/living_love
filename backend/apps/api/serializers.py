@@ -135,13 +135,28 @@ class CartItemSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.filter(is_active=True), source="product", write_only=True
     )
+    options_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
-        fields = ("id", "product", "product_id", "options", "unit_price", "qty", "line_total")
+        fields = (
+            "id",
+            "product",
+            "product_id",
+            "options",
+            "options_summary",
+            "unit_price",
+            "qty",
+            "line_total",
+        )
         read_only_fields = ("unit_price", "line_total")
 
     line_total = serializers.IntegerField(read_only=True)
+
+    def get_options_summary(self, obj):
+        from apps.catalog.pricing import summarize_options
+
+        return summarize_options(obj.product, obj.options or {})
 
 
 class CartSerializer(serializers.ModelSerializer):

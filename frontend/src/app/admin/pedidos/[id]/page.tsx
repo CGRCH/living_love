@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { formatCLP } from "@/lib/api";
 
 import { orderStatusLabel } from "@/lib/order-status";
+import { shippingMethodLabel, paymentKindLabel, paymentStatusLabel, paymentProviderLabel } from "@/lib/labels";
 
 const statuses = [
   "pending",
@@ -21,10 +22,16 @@ const statuses = [
 
 export default function AdminOrderDetailPage({ params }: { params: { id: string } }) {
   const [order, setOrder] = useState<Record<string, unknown> | null>(null);
-  const [status, setStatus] = useState("in_workshop");
+  const [status, setStatus] = useState("");
   const [folio, setFolio] = useState("");
 
-  const load = () => adminFetch(`/api/admin/orders/${params.id}/`).then((r) => r.json()).then(setOrder);
+  const load = () =>
+    adminFetch(`/api/admin/orders/${params.id}/`)
+      .then((r) => r.json())
+      .then((data) => {
+        setOrder(data);
+        if (data.status) setStatus(String(data.status));
+      });
 
   useEffect(() => {
     load();
@@ -51,7 +58,7 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
           <p className="text-[10px] uppercase tracking-label text-taupe">Despacho</p>
           <p className="mt-2">{address?.name}</p>
           <p>{address?.street}</p>
-          <p className="mt-1 text-taupe">{order.shipping_method as string}</p>
+          <p className="mt-1 text-taupe">{shippingMethodLabel(String(order.shipping_method))}</p>
         </div>
         <div>
           <p className="text-[10px] uppercase tracking-label text-taupe">Montos</p>
@@ -88,7 +95,8 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
             {payments.map((p) => (
               <li key={`${p.provider}-${p.amount}`} className="flex justify-between">
                 <span>
-                  {p.provider} ({p.payment_kind}) — {p.status}
+                  {paymentProviderLabel(p.provider)} ({paymentKindLabel(p.payment_kind)}) —{" "}
+                  {paymentStatusLabel(p.status)}
                 </span>
                 <span>{formatCLP(p.amount)}</span>
               </li>
@@ -123,7 +131,8 @@ export default function AdminOrderDetailPage({ params }: { params: { id: string 
         <input
           type="file"
           accept="application/pdf"
-          className="mt-2 block text-sm"
+          className="mt-2 block w-full text-sm file:mr-3 file:border file:border-arena file:bg-marfil file:px-3 file:py-2 file:text-xs file:uppercase"
+          aria-label="Subir PDF tributario"
           onChange={async (e) => {
             const fd = new FormData();
             fd.append("pdf", e.target.files![0]);

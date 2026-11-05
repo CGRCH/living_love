@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { fetchCategories, fetchProducts } from "@/lib/api";
 import { categoryImageForSlug } from "@/lib/demo-images";
 import { ProductCard } from "@/components/catalog/ProductCard";
+import { pluralModelos, pluralProductos } from "@/lib/labels";
 
 const labels: Record<string, string> = {
   livings: "Livings & sofás",
@@ -36,7 +37,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
             Inicio / {title}
           </p>
           <h1 className="mt-2 font-serif text-4xl capitalize">{title}</h1>
-          <p className="mt-2 text-sm text-arena">{products.length} modelos · Fabricados a tu medida</p>
+          <p className="mt-2 text-sm text-arena">{pluralModelos(products.length)} · Fabricados a tu medida</p>
         </div>
       </section>
 
@@ -59,7 +60,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
         </aside>
         <div>
           <div className="mb-8 flex items-center justify-between text-sm text-taupe">
-            <span>Mostrando {products.length} productos</span>
+            <span>Mostrando {pluralProductos(products.length)}</span>
             <span className="text-[10px] uppercase tracking-label">Ordenar: Destacados</span>
           </div>
           <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
