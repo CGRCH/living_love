@@ -1,0 +1,12 @@
+.env
+*.sqlite3
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+.next/
+media/
+staticfiles/
+test-results/
+playwright-report/
+db_ci.sqlite3
